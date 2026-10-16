@@ -1,0 +1,107 @@
+<canvas id="cv" aria-label="Table de jeu Ellipso"></canvas>
+
+<div id="hud" hidden>
+  <div class="hud-top">
+    <div class="lvl"><span class="lbl">NIVEAU</span><b id="hLvl">1</b></div>
+    <div class="score"><b id="hScore">0</b><span class="lbl-pts">POINTS</span><span id="hCombo" class="combo" hidden></span></div>
+    <div class="right">
+      <div id="hNeed" class="need" aria-label="Balles dans la cible"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg><b id="hNeedTxt">0/2</b></div>
+      <button id="bPause" class="icon" aria-label="Pause"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg></button>
+    </div>
+  </div>
+  <div class="hud-bottom">
+    <div id="hChips" class="chips"></div>
+    <div class="actions">
+      <button id="bHint" class="pill gold" hidden>Voir les foyers · pub</button>
+      <button id="bSalvo" class="cta" hidden>LANCER LA SALVE</button>
+    </div>
+    <div class="aimrow" id="aimRow" hidden>
+      <button id="bLeft" class="icon fine" aria-label="Tourner à gauche"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button id="bFire" class="cta fire">TIRER</button>
+      <button id="bRight" class="icon fine" aria-label="Tourner à droite"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <p id="hHelp" class="help">Glisse pour viser · relâche pour tirer</p>
+  </div>
+</div>
+
+<section id="menu" class="screen">
+  <div class="menu-inner">
+    {{LOGO}}
+    <h1 class="word">ELLIPSO</h1>
+    <p class="tag">Traverse un point ×2, dédouble ta balle, et vise la cible grâce aux foyers.</p>
+    <div class="best" id="mBest"></div>
+    <button id="bPlay" class="cta big">JOUER<small id="bPlaySub">Niveau 1</small></button>
+    <button id="bRestart1" class="link" hidden>Recommencer au niveau 1</button>
+    <div class="row">
+      <button id="bSound" class="pill">Son : oui</button>
+      <button id="bHow" class="pill">Comment jouer</button>
+      <button id="bInstall" class="pill gold" hidden>Installer le jeu</button>
+    </div>
+  </div>
+  <div class="banner" data-banner></div>
+</section>
+
+<section id="how" class="screen modal" hidden>
+  <div class="card">
+    <div class="eyebrow">COMMENT JOUER</div>
+    <h2>Les règles</h2>
+    <ol class="rules">
+      <li><span>Glisse pour viser, relâche pour tirer.<small>Les flèches règlent l'angle au dixième de degré. La ligne devient verte quand le tir est correct.</small></span></li>
+      <li><span>Ta balle doit d'abord traverser un point ×2 : elle se divise en deux.<small>Si elle touche la clôture avant, elle tombe et le niveau recommence.</small></span></li>
+      <li><span>Chaque balle touche la clôture 3 fois au maximum.<small>Certains niveaux en autorisent moins.</small></span></li>
+      <li><span>Ce qui part d'un foyer arrive à l'autre.<small>Un point ×2 posé sur un foyer envoie ses deux balles vers la cible.</small></span></li>
+      <li><span>Mets assez de balles dans la cible pour passer.<small>Raté ? Le niveau recommence. Tu peux le passer avec une pub ou avec tes points.</small></span></li>
+    </ol>
+    <button id="bHowOk" class="cta">COMPRIS</button>
+  </div>
+</section>
+
+<section id="pause" class="screen modal" hidden>
+  <div class="card">
+    <div class="eyebrow">PAUSE</div>
+    <h2 id="pTitle">Niveau 1</h2>
+    <p id="pCode"></p>
+    <div class="stack">
+      <button id="bResume" class="cta">REPRENDRE</button>
+      <button id="bPauseSound" class="secondary">Son : oui</button>
+      <button id="bShare" class="secondary">Partager ma progression</button>
+      <button id="bQuit" class="secondary">Quitter vers le menu</button>
+    </div>
+  </div>
+</section>
+
+<section id="news" class="screen modal" hidden>
+  <div class="card">
+    <div class="eyebrow">NOUVEAU</div>
+    <h2 id="nTitle"></h2>
+    <p id="nText"></p>
+    <button id="bNewsOk" class="cta">C'EST PARTI</button>
+  </div>
+</section>
+
+<section id="fail" class="screen modal" hidden>
+  <div class="stack">
+    <div class="card">
+      <div class="eyebrow" id="fEyebrow">NIVEAU 1 · ESSAI 1</div>
+      <h2 id="fTitle">Raté !</h2>
+      <p id="fText"></p>
+      <div class="stack">
+        <button id="bRetry" class="cta">RÉESSAYER</button>
+        <button id="bSkipAd" class="secondary">Passer le niveau · regarder une pub</button>
+        <button id="bSkipPts" class="secondary">Passer le niveau · 200 points</button>
+      </div>
+    </div>
+    <div class="banner" data-banner></div>
+  </div>
+</section>
+
+<section id="ad" class="screen modal" hidden>
+  <div class="card">
+    <div class="ad-label">PUBLICITÉ</div>
+    <div class="ad-box" id="adBox">Démo : une vraie publicité s'affichera ici quand ton compte AdSense sera configuré.</div>
+    <div class="bar"><i id="adBar"></i></div>
+    <button id="bAdClose" class="cta" disabled>Patiente… <span id="adSec">3</span></button>
+  </div>
+</section>
+
+<div id="toast" class="toast" role="status" hidden></div>

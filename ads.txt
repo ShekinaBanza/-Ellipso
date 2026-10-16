@@ -1,0 +1,2 @@
+# Remplace pub-XXXXXXXXXXXXXXXX par ton identifiant AdSense, puis supprime cette ligne.
+google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0

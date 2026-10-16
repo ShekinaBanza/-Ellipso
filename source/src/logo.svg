@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="70%">
+      <stop offset="0" stop-color="#16244a"/>
+      <stop offset="0.6" stop-color="#0a1229"/>
+      <stop offset="1" stop-color="#050913"/>
+    </radialGradient>
+    <linearGradient id="rayA" x1="256" y1="131" x2="367" y2="197" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd25a"/>
+      <stop offset="1" stop-color="#ff4f9a"/>
+    </linearGradient>
+    <linearGradient id="rayB" x1="367" y1="197" x2="256" y2="381" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff4f9a"/>
+      <stop offset="1" stop-color="#8b6bff"/>
+    </linearGradient>
+    <linearGradient id="rayC" x1="256" y1="131" x2="150" y2="331" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd25a"/>
+      <stop offset="1" stop-color="#3fe0c5"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="9" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect id="plate" width="512" height="512" rx="112" fill="url(#bg)"/>
+  <g id="mark">
+    <ellipse cx="256" cy="256" rx="118" ry="172" fill="none" stroke="#6fe6ff" stroke-width="20" filter="url(#glow)"/>
+    <ellipse cx="256" cy="256" rx="118" ry="172" fill="none" stroke="#e9fbff" stroke-width="5" opacity="0.85"/>
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#soft)">
+      <path d="M256 131 L149.8 330.8 L256 381" stroke="url(#rayC)" stroke-width="9" opacity="0.75"/>
+      <path d="M256 131 L366.9 197" stroke="url(#rayA)" stroke-width="13"/>
+      <path d="M366.9 197 L256 381" stroke="url(#rayB)" stroke-width="13"/>
+    </g>
+    <circle cx="256" cy="131" r="17" fill="#ffd25a" filter="url(#soft)"/>
+    <circle cx="256" cy="381" r="24" fill="none" stroke="#ffd25a" stroke-width="7" filter="url(#soft)"/>
+    <circle cx="256" cy="381" r="11" fill="#ffffff" filter="url(#soft)"/>
+  </g>
+</svg>
