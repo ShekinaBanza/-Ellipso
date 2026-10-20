@@ -47,16 +47,16 @@
   const Gen = (() => {
     let worker = null, nextId = 1; const waiting = new Map(), cache = new Map();
     try {
-      const src = $("engine-src").textContent + "\nonmessage=function(e){var d=e.data;try{postMessage({id:d.id,L:ENGINE.genLevel(d.n,d.seed)})}catch(err){postMessage({id:d.id,err:String(err)})}};";
+      const src = $("engine-src").textContent + "\nonmessage=function(e){var d=e.data;try{postMessage({id:d.id,L:d.demo?ENGINE.genDemo(d.n,d.seed):ENGINE.genLevel(d.n,d.seed)})}catch(err){postMessage({id:d.id,err:String(err)})}};";
       worker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
       worker.onmessage = (e) => { const w = waiting.get(e.data.id); if (!w) return; waiting.delete(e.data.id); e.data.L ? w.ok(e.data.L) : w.ko(e.data.err); };
       worker.onerror = () => { worker = null; };
     } catch (e) { worker = null; }
-    function get(n, seed) {
-      const k = seed + ":" + n;
+    function get(n, seed, demo) {
+      const k = (demo ? "d" : "") + seed + ":" + n, gen = () => (demo ? E.genDemo(n, seed) : E.genLevel(n, seed));
       if (!cache.has(k)) {
-        const p = worker ? new Promise((ok, ko) => { const id = nextId++; waiting.set(id, { ok, ko }); worker.postMessage({ id, n, seed }); }).catch(() => E.genLevel(n, seed))
-          : new Promise((ok) => setTimeout(() => ok(E.genLevel(n, seed)), 0));
+        const p = worker ? new Promise((ok, ko) => { const id = nextId++; waiting.set(id, { ok, ko }); worker.postMessage({ id, n, seed, demo: !!demo }); }).catch(gen)
+          : new Promise((ok) => setTimeout(() => ok(gen()), 0));
         cache.set(k, p);
         if (cache.size > 12) cache.delete(cache.keys().next().value);
       }
@@ -86,6 +86,7 @@
     bump: ["Rebondisseur", "Les barres jaunes renvoient la balle comme un miroir. Ce rebond ne compte pas comme un contact avec la clôture."],
     portal: ["Portails", "Une balle qui entre dans un portail ressort par l'autre, dans la même direction."],
     moveorb: ["Point ×2 mobile", "Un des points ×2 se déplace. Tire au bon moment pour le traverser."],
+    cascade: ["Cascade ×2 ×3 ×4", "Chaque point multiplie toutes les balles qui le traversent : 1 balle, puis 2, puis 6, puis 24… Le dernier point est posé sur un foyer : toutes ses balles rebondissent et convergent sur la cible. Vise la chaîne entière : la ligne verte te montre jusqu'où elle va. Plus tu mets de balles, plus tu gagnes d'étoiles."],
     fog: ["Brouillard", "Une zone de brouillard cache une partie de la table. Tes balles y passent, mais tu ne les vois plus."],
   };
   const THEMES = {
@@ -102,12 +103,14 @@
     phase: "aim", ghost: null, ang: 0, time: 0, phaseT: 0, src: null, aiming: false, dragging: false, fast: false,
     revealed: false, paused: false, fade: 0, hue: 190, timeLeft: 0, failWhy: "", locked: false,
     lives: store.get("lives", 5), lifeAt: store.get("lifeAt", 0), defi: null, dLives: 3, dPoints: 0,
+    slow: 0, auto: null, demoSeed: 1, preview: null, stars: store.get("stars", 0),
   };
   let parts = [], rings = [], pops = [], shake = 0, flash = 0, view = { s: 1, cx: 0, cy: 0 }, W = 0, H = 0, DPR = 1;
   const cv = $("cv"), ctx = cv.getContext("2d");
-  const curSeed = () => (G.mode === "defi" ? G.defi.seed : seed);
+  const curSeed = () => (G.mode === "defi" ? G.defi.seed : G.mode === "demo" ? G.demoSeed : seed);
   function saveProg() {
     if (G.mode !== "main") return;
+    store.set("stars", G.stars);
     prog.level = G.n; prog.points = G.points; prog.bestLevel = Math.max(prog.bestLevel || 1, G.n);
     store.set("progress", prog); store.set("level", G.n); store.set("points", G.points); store.set("bestLevel", prog.bestLevel);
     NET.saveProgress({ level: prog.level, bestLevel: prog.bestLevel, points: prog.points, cleared: prog.cleared, fails: prog.fails });
@@ -132,8 +135,8 @@
   const nextLife = () => (G.lifeAt ? Math.max(0, regenMs() - (Date.now() - G.lifeAt)) : 0);
   const mmss = (ms) => { const s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
   function addLives(k) { G.lives = Math.min(livesMax(), G.lives + k); if (G.lives >= livesMax()) G.lifeAt = 0; tickLives(); Snd.life(); }
-  const curLives = () => (G.mode === "defi" ? G.dLives : G.lives);
-  const curMax = () => (G.mode === "defi" ? 3 : livesMax());
+  const curLives = () => (G.mode === "defi" ? G.dLives : G.mode === "demo" ? 1 : G.lives);
+  const curMax = () => (G.mode === "defi" ? 3 : G.mode === "demo" ? 0 : livesMax());
   function heartsHTML(n, max, lostIdx) { let h = ""; for (let i = 0; i < max; i++) h += '<i class="' + (i < n ? "on" : "") + (i === lostIdx ? " lost" : "") + '"></i>'; return h; }
 
   // ---------------- layout ----------------
@@ -152,17 +155,20 @@
   let shownLives = -1;
   function renderHUD() {
     const L = G.L; if (!L) return;
-    $("hLvlLbl").textContent = G.mode === "defi" ? "DÉFI · NIV." : "NIVEAU";
+    $("hLvlLbl").textContent = G.mode === "defi" ? "DÉFI · NIV." : G.mode === "demo" ? "DÉMO" : "NIVEAU";
     $("hLvl").textContent = G.n;
-    $("hScore").textContent = fmt(G.mode === "defi" ? G.dPoints : G.points);
+    $("hScore").textContent = fmt(G.mode === "defi" ? G.dPoints : G.mode === "demo" ? (G.S ? G.S.balls.filter((b) => b.state === "live" || b.state === "hit").length : 1) : G.points);
+    document.querySelector(".lbl-pts").textContent = G.mode === "demo" ? "BALLES" : "POINTS";
     const lv = curLives();
     $("hLives").innerHTML = heartsHTML(lv, curMax(), shownLives > lv ? lv : -1); shownLives = lv;
     const c = $("hCombo"); if (G.combo > 1) { c.hidden = false; c.textContent = "COMBO ×" + String(comboMult()).replace(".", ","); } else c.hidden = true;
     const hits = G.S ? G.S.hits : 0;
-    $("hNeed").hidden = L.type === "salve"; $("hNeedTxt").textContent = Math.min(hits, 99) + "/" + L.need; $("hNeed").classList.toggle("ok", hits >= L.need && L.need > 0);
+    $("hNeed").hidden = L.type === "salve"; $("hNeedTxt").textContent = G.mode === "demo" ? String(hits) : Math.min(hits, 999) + "/" + L.need; $("hNeed").classList.toggle("ok", hits >= L.need && L.need > 0);
     const chips = [];
     if (L.type === "salve") chips.push(["BONUS · " + (THEMES[L.theme] || THEMES.or).name, "gold"]);
+    else if (G.mode === "demo") chips.push(["CASCADE " + (L.mults || []).map((m) => "×" + m).join(" → "), "gold"]);
     else {
+      if (L.star3) chips.push(["★ " + L.need + " · ★★ " + L.star2 + " · ★★★ " + L.star3 + " balles", "gold"]);
       chips.push(["Clôture : " + L.maxB + " contact" + (L.maxB > 1 ? "s" : "") + " max", L.maxB < 3 ? "hot" : ""]);
       if (L.hidden && !G.revealed) chips.push(["Foyers cachés", "hot"]);
       if (L.walls.some((w) => w.rot)) chips.push(["Mur tournant", "hot"]);
@@ -178,17 +184,20 @@
     const aim = G.phase === "aim";
     $("bHint").hidden = !(L.hidden && !G.revealed && aim);
     $("bSalvo").hidden = !(L.type === "salve" && aim);
-    $("aimRow").hidden = !(L.type === "tir" && aim);
+    $("aimRow").hidden = !(L.type === "tir" && aim) || G.mode === "demo";
+    $("bExitDemo").hidden = G.mode !== "demo";
     updateHelp();
   }
   let aimInfo = { kind: "none" };
   function updateHelp() {
     const h = $("hHelp"), L = G.L; h.classList.remove("good", "bad");
     if (L.type === "salve") { h.textContent = G.locked ? "Source calée pile sur le foyer !" : "Glisse pour placer la source, puis lance la salve"; if (G.locked) h.classList.add("good"); return; }
-    if (G.phase === "fly") { h.textContent = "Maintiens le doigt pour accélérer"; return; }
+    if (G.mode === "demo") { h.textContent = demoCaption(); h.classList.add("good"); return; }
+    if (G.phase === "fly") { const n = G.S ? G.S.balls.filter((b) => b.state === "live").length : 0; h.textContent = n > 1 ? n + " balles en jeu · maintiens pour accélérer" : "Maintiens le doigt pour accélérer"; return; }
     if (G.phase !== "aim") { h.textContent = ""; return; }
-    const k = aimInfo.kind;
-    if (k === "orb") { h.textContent = "Tir correct : la balle passe par un point ×2"; h.classList.add("good"); }
+    const k = aimInfo.kind, pv = G.preview;
+    if (k === "orb" && pv && pv.chain.length) { h.textContent = "Chaîne : " + pv.chain.map((m) => "×" + m).join(" → ") + " · " + pv.count + " balles" + (pv.focus ? " vers le foyer" : ""); h.classList.add("good"); }
+    else if (k === "orb") { h.textContent = "Tir correct : la balle passe par un point ×2"; h.classList.add("good"); }
     else if (k === "fence") { h.textContent = "Attention : la balle touchera la clôture sans ×2 et tombera"; h.classList.add("bad"); }
     else if (k === "wall" || k === "hole") { h.textContent = "Attention : obstacle sur la trajectoire"; h.classList.add("bad"); }
     else if (k === "bump" || k === "portal") h.textContent = k === "bump" ? "La balle va rebondir sur la barre jaune" : "La balle va passer par un portail";
@@ -224,26 +233,34 @@
     COMMUNITY.rememberDefi(ch);
     showScreen("play"); startLevel(true);
   }
+  function startDemo() {
+    Snd.init();
+    G.mode = "demo"; G.demoSeed = newSeed(); G.n = 1; G.combo = 0;
+    showScreen("play"); startLevel(true);
+  }
   let loadToken = 0;
   async function startLevel(fresh) {
-    const token = ++loadToken, n = G.n, sd = curSeed();
+    const token = ++loadToken, n = G.n, sd = curSeed(), demo = G.mode === "demo";
     let L;
     const t = setTimeout(() => { if (token === loadToken) $("loading").hidden = false; }, 120);
-    try { L = await Gen.get(n, sd); } finally { clearTimeout(t); $("loading").hidden = true; }
+    try { L = await Gen.get(n, sd, demo); } finally { clearTimeout(t); $("loading").hidden = true; }
+    if (!L) { G.n++; return startLevel(fresh); }
     if (token !== loadToken || G.n !== n) return;
     const prevL = G.L;
     if (!fresh && prevL && prevL.n === L.n && prevL.gems) L.gems.forEach((g, i) => { if (prevL.gems[i] && prevL.gems[i].taken) g.taken = true; });
     G.L = L; G.S = null; if (fresh) { G.revealed = false; G.ghost = null; G.tries = 0; }
-    G.phase = "aim"; G.phaseT = 0; G.time = 0; G.fade = fresh ? 0 : 1; G.fast = false; G.timeLeft = L.timer || 0; G.locked = false;
+    G.phase = "aim"; G.phaseT = 0; G.time = 0; G.fade = fresh ? 0 : 1; G.fast = false; G.timeLeft = L.timer || 0; G.locked = false; G.slow = 0; G.preview = null;
+    G.auto = demo && L.bestAng != null ? { t: -0.9, dur: 1.6 } : null;
     G.hue = L.type === "salve" ? ((THEMES[L.theme] || THEMES.or).hue + 360) % 360 : hueFor(G.n);
     if (L.type === "salve") { G.src = { x: L.start.x, y: L.start.y }; }
     else if (fresh) { const o = L.orbs[1] || L.orbs[0]; G.ang = Math.atan2(o.y - L.start.y, o.x - L.start.x) + 0.35; }
-    if (fresh) { parts = []; rings = []; pops = []; pops.push({ text: L.type === "salve" ? "BONUS " + (THEMES[L.theme] || THEMES.or).name : (G.mode === "defi" ? "DÉFI · " : "NIVEAU ") + G.n, x: 0, y: -40, life: 1.1, max: 1.1, size: 30, color: "#ffffff", big: true }); }
+    if (demo) G.ang = L.bestAng + (G.n % 2 ? 0.9 : -0.9);
+    if (fresh) { parts = []; rings = []; pops = []; pops.push({ text: L.type === "salve" ? "BONUS " + (THEMES[L.theme] || THEMES.or).name : demo ? "1 BALLE" : (G.mode === "defi" ? "DÉFI · " : "NIVEAU ") + G.n, x: 0, y: -40, life: 1.1, max: 1.1, size: 30, color: "#ffffff", big: true }); }
     renderHUD(); layout();
     if (fresh) {
-      newsQueue = L.features.filter((f) => NEWS[f] && !seen.includes(f));
+      newsQueue = demo ? [] : L.features.filter((f) => NEWS[f] && !seen.includes(f));
       if (newsQueue.length) showNews();
-      Gen.get(n + 1, sd); Gen.get(n + 2, sd);
+      Gen.get(n + 1, sd, demo); if (!demo) Gen.get(n + 2, sd);
     }
   }
   function showNews() {
@@ -267,9 +284,29 @@
     G.src = p; if (G.locked) { G.locked = false; updateHelp(); }
   }
   function canPlay() { tickLives(); return curLives() > 0; }
+  // assisted aim: predict the shot up to the fence (splits included) and report the chain of multipliers it goes through
+  function predict(ang) {
+    const L = G.L, P = Object.assign({}, L, { maxB: 0, noFall: true, gems: null });
+    const S = E.newSim(P, ang, G.time), chain = [], seenOrb = new Set();
+    let focus = false, steps = 0;
+    const ev = (type, b, x, y, o) => { if (type === "split") { const key = o.move || o; if (!seenOrb.has(key)) { seenOrb.add(key); chain.push(o.m || 2); } if (o.focus) focus = true; } };
+    while (!S.done && steps < 900) { E.stepSim(S, 1 / 120, ev); steps++; }
+    const count = S.balls.filter((b) => b.state !== "split" && b.why !== "wall" && b.why !== "hole").length;
+    return { S, chain, count: S.splits ? count : 1, focus };
+  }
+  function magnetAim() { // nudges the angle (at most 0.6°) to the direction that keeps the longest chain
+    const base = G.ang, cur = predict(base); let best = cur, bestA = base;
+    for (let k = -12; k <= 12; k++) {
+      if (!k) continue;
+      const a = base + (k * 0.05 * Math.PI) / 180, p = predict(a);
+      if (p.count > best.count || (p.count === best.count && p.chain.length > best.chain.length)) { best = p; bestA = a; }
+    }
+    if (bestA !== base && best.count > cur.count) { G.ang = bestA; toast("Visée aimantée : " + best.chain.map((m) => "×" + m).join(" → ") + " · " + best.count + " balles"); }
+  }
   function fire() {
     if (G.phase !== "aim" || G.L.type !== "tir" || G.paused || G.screen !== "play") return;
     if (!canPlay()) { showFailCard(); return; }
+    if (G.mode !== "demo") magnetAim();
     Snd.init();
     G.tries++; G.ghost = null;
     G.S = E.newSim(G.L, G.ang, G.time);
@@ -299,15 +336,18 @@
     else if (type === "split") {
       Snd.split(b.gen); buzz(12);
       burst(x, y, 26, 275, 200, 0.6, 2.4); rings.push({ x, y, r: 6, life: 0.5, max: 0.5, hue: 275, big: true });
-      pops.push({ text: "×2", x, y: y - 18, life: 0.8, max: 0.8, size: 20, color: "#c9b8ff" });
+      const m = g.m || 2; pops.push({ text: "×" + m, x, y: y - 20, life: 0.9, max: 0.9, size: 18 + m * 2, color: ORB_COL[m] || "#c9b8ff" });
     } else if (type === "gem") {
       g.taken = true; const v = salvo ? 20 : 50; addPoints(v); bumpScore(); Snd.gem(); buzz(15);
       burst(x, y, 22, 165, 160, 0.6, 2.5); pops.push({ text: "+" + v, x, y: y - 10, life: 0.9, max: 0.9, size: 18, color: "#3fe0c5" });
     } else if (type === "hit") {
       if (salvo) { Snd.tick(G.S.hits); burst(x, y, 3, b.hue, 140, 0.5, 2); }
       else {
-        Snd.hit(G.S.hits); buzz(20); burst(x, y, 24, 48, 200, 0.6, 2.6); rings.push({ x, y, r: 4, life: 0.5, max: 0.5, hue: 48, big: true });
-        pops.push({ text: G.S.hits + "/" + G.L.need, x: x + 30, y: y - 20, life: 0.9, max: 0.9, size: 18, color: G.S.hits >= G.L.need ? "#ffd25a" : "#ffffff" });
+        if (G.S.hits === 1 && G.S.balls.filter((q) => q.state === "live").length >= 5) G.slow = 1.1; // slow motion for the convergence
+        const h = G.S.hits;
+        if (h <= 6) { Snd.hit(h); buzz(20); } else Snd.tick(h);
+        burst(x, y, h <= 6 ? 24 : 6, 48, 200, 0.6, 2.6); if (h <= 12) rings.push({ x, y, r: 4, life: 0.5, max: 0.5, hue: 48, big: true });
+        if (h <= G.L.need || h % 5 === 0 || h === G.L.star2 || h === G.L.star3) pops.push({ text: G.mode === "demo" ? String(h) : h + "/" + G.L.need, x: x + 30, y: y - 20, life: 0.9, max: 0.9, size: 18, color: h >= G.L.need ? "#ffd25a" : "#ffffff" });
         renderHUD();
       }
     } else if (type === "wall") { burst(x, y, salvo ? 3 : 16, 340, 130, 0.45, 2); if (!salvo) { Snd.wall(); shake = Math.max(shake, 6); } }
@@ -327,20 +367,26 @@
   }
   function win() {
     const L = G.L, S = G.S, first = G.tries === 1;
+    if (G.mode === "demo") { pops.push({ text: S.hits + " BALLES", x: 0, y: -60, life: 2, max: 2, size: 34, color: "#ffd25a", big: true }); pops.push({ text: "1 TIR · 1 CIBLE", x: 0, y: -18, life: 2, max: 2, size: 18, color: "#ffffff", big: true }); flash = 0.4; Snd.perfect(); G.phase = "clear"; G.phaseT = -0.8; renderHUD(); return; }
     G.combo = first ? G.combo + 1 : 0;
     const extra = Math.max(0, S.hits - L.need);
-    const pts = Math.round((40 + 5 * G.n + 20 * S.hits + 30 * extra) * (first ? comboMult() : 1));
+    const stars = L.star3 ? (S.hits >= L.star3 ? 3 : S.hits >= L.star2 ? 2 : 1) : first ? 3 : G.tries === 2 ? 2 : 1;
+    if (G.mode === "main") G.stars += stars;
+    const pts = Math.round((40 + 5 * G.n + (L.cascade ? 12 : 20) * S.hits + (L.cascade ? 0 : 30 * extra) + 50 * (stars - 1)) * (first ? comboMult() : 1));
     addPoints(pts); G.cleared++; bumpScore();
     if (G.mode === "main") { prog.cleared++; NET.levelCleared(pts); } else NET.stat("levels");
     const t = L.target;
     burst(t.x, t.y, 70, -1, 260, 1.0, 3); rings.push({ x: t.x, y: t.y, r: 6, life: 0.7, max: 0.7, hue: 48, big: true });
     flash = 0.35; Snd.win(G.combo); buzz(40);
-    const word = extra > 0 ? "INCROYABLE !" : first ? (G.combo > 1 ? "COMBO ×" + String(comboMult()).replace(".", ",") : "PARFAIT !") : G.tries === 2 ? "BRAVO !" : "ENFIN !";
+    pops.push({ text: "★".repeat(stars) + "☆".repeat(3 - stars), x: 0, y: 28, life: 1.4, max: 1.4, size: 30, color: "#ffd25a", big: true });
+    if (L.cascade) pops.push({ text: S.hits + " balles", x: 0, y: 62, life: 1.4, max: 1.4, size: 16, color: "#ffffff", big: true });
+    const word = stars === 3 && L.cascade ? "CASCADE PARFAITE !" : extra > 0 && !L.cascade ? "INCROYABLE !" : first ? (G.combo > 1 ? "COMBO ×" + String(comboMult()).replace(".", ",") : "PARFAIT !") : G.tries === 2 ? "BRAVO !" : "ENFIN !";
     pops.push({ text: word, x: 0, y: -60, life: 1.3, max: 1.3, size: 34, color: first ? "#ffd25a" : "#ffffff", big: true });
     pops.push({ text: "+" + pts, x: 0, y: -15, life: 1.2, max: 1.2, size: 22, color: "#ffffff", big: true });
     G.phase = "clear"; G.phaseT = 0; renderHUD();
   }
   function failLevel(why) {
+    if (G.mode === "demo") { G.phase = "aim"; G.S = null; G.auto = { t: -0.5, dur: 1 }; return; }
     G.combo = 0; G.failWhy = why; Snd.fail(); NET.stat("fails");
     if (G.mode === "defi") G.dLives = Math.max(0, G.dLives - 1);
     else { if (G.lives >= livesMax()) G.lifeAt = Date.now(); G.lives = Math.max(0, G.lives - 1); prog.fails++; tickLives(); }
@@ -393,10 +439,22 @@
   }
   function advance(skipped) {
     G.n++; saveProg();
+    if (G.mode === "demo") G.cleared++;
     const go = () => startLevel(true);
     const every = Math.max(1, cfg().interstitialEvery || 4);
+    if (G.mode === "demo") return go();
     if (!skipped && G.cleared > 0 && G.cleared % every === 0) { G.paused = true; ADS.interstitial("niveau_" + G.n, () => { G.paused = false; go(); }); }
     else go();
+  }
+
+  // ---------------- demo captions ----------------
+  function demoCaption() {
+    const S = G.S, L = G.L;
+    if (!S) return "Une seule balle, un seul tir. La visée passe par un point ×" + ((L.orbs[0] && L.orbs[0].m) || 2) + ".";
+    const live = S.balls.filter((b) => b.state === "live").length;
+    if (S.hits > 0) return "Le dernier point est sur un foyer : toutes ses balles convergent vers l'autre foyer. " + S.hits + " dans la cible !";
+    if (S.splits > 0) return "Chaque point multiplie les balles qui le traversent : " + live + " balles en jeu.";
+    return "La balle file vers la chaîne " + (L.mults || []).map((m) => "×" + m).join(" → ") + ".";
   }
 
   // ---------------- challenges ----------------
@@ -468,6 +526,7 @@
   cv.addEventListener("pointerdown", (e) => {
     Snd.init();
     if (G.screen !== "play" || G.paused) return;
+    if (G.mode === "demo") { if (G.phase === "fly") G.fast = true; return; }
     try { cv.setPointerCapture(e.pointerId); } catch (_) {}
     const p = toWorld(e);
     if (G.phase === "aim") { if (G.L.type === "tir") { G.aiming = true; G.ang = Math.atan2(p.y - G.L.start.y, p.x - G.L.start.x); } else { G.dragging = true; placeSrc(p); } }
@@ -508,7 +567,7 @@
   // ---------------- buttons ----------------
   function pauseGame() { if (G.screen !== "play" || G.paused) return; G.paused = true; $("pTitle").textContent = (G.mode === "defi" ? "Défi · niveau " : "Niveau ") + G.n; $("pCode").textContent = "Partie n° " + gameCode(curSeed()) + " · niveaux uniques à cette partie"; $("bPauseSound").textContent = "Son : " + (Snd.on ? "oui" : "non"); $("pause").hidden = false; }
   function setSound(on) { Snd.on = on; store.set("sound", on); if (on) Snd.init(); $("bSound").textContent = "Son : " + (on ? "oui" : "non"); $("bPauseSound").textContent = "Son : " + (on ? "oui" : "non"); }
-  function toMenu() { closeFail(); ["pause", "dover"].forEach((id) => ($(id).hidden = true)); G.paused = false; G.mode = "main"; G.n = prog.level; G.L = null; saveProg(); showScreen("menu"); renderMenu(); }
+  function toMenu() { closeFail(); ["pause", "dover"].forEach((id) => ($(id).hidden = true)); G.paused = false; G.auto = null; G.mode = "main"; G.n = prog.level; G.L = null; saveProg(); showScreen("menu"); renderMenu(); }
   $("bPlay").onclick = () => { tickLives(); play(prog.level || 1); };
   $("bRestart1").onclick = () => { seed = newSeed(); store.set("seed", seed); prog.level = 1; G.combo = 0; play(1); toast("Nouvelle partie n° " + gameCode(seed)); };
   $("bSound").onclick = () => setSound(!Snd.on);
@@ -521,6 +580,8 @@
   $("bQuit").onclick = toMenu;
   $("bFailMenu").onclick = toMenu;
   $("bComm").onclick = () => COMMUNITY.open("rank");
+  $("bDemo").onclick = startDemo;
+  $("bExitDemo").onclick = toMenu;
   $("bDefi").onclick = () => COMMUNITY.open("defi");
   $("bNewsOk").onclick = () => { $("news").hidden = true; showNews(); };
   $("bSalvo").onclick = fireSalvo;
@@ -578,18 +639,34 @@
     if (G.screen !== "play" || G.paused || !G.L) return;
     const L = G.L;
     G.fade = Math.min(1, G.fade + dt * 2.5); G.phaseT += dt;
+    if (G.phase === "aim" && L.type === "tir" && G.auto && G.mode === "demo") {
+      G.auto.t += dt;
+      if (G.auto.t > 0) {
+        if (G.auto.from == null) G.auto.from = G.ang;
+        const u = Math.min(1, G.auto.t / G.auto.dur), e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+        G.ang = G.auto.from + (L.bestAng - G.auto.from) * e;
+        if (u >= 1 && G.auto.t > G.auto.dur + 0.5) { G.auto = null; fire(); }
+      }
+    }
     if (G.phase === "aim" && L.type === "tir") {
       const prev = aimInfo.kind; aimInfo = analyseAim(); if (aimInfo.kind !== prev) updateHelp();
+      const pvKey = G.ang.toFixed(5) + (E.moving(L) ? ":" + G.time.toFixed(2) : "");
+      if (!G.preview || G.preview.key !== pvKey) { const pv = predict(G.ang); pv.key = pvKey; const changed = !G.preview || G.preview.count !== pv.count || G.preview.chain.join() !== pv.chain.join(); G.preview = pv; if (changed) updateHelp(); }
       if (L.timer) {
         const before = Math.ceil(G.timeLeft); G.timeLeft -= dt;
         if (Math.ceil(G.timeLeft) !== before && G.timeLeft <= 3 && G.timeLeft > 0) Snd.beep();
         if (G.timeLeft <= 0) { G.tries++; G.S = null; failLevel("time"); }
       }
     }
-    const steps = Math.round((dt * (G.phase === "fly" && G.fast ? 3 : 1)) / E.DT);
+    if (G.slow > 0) G.slow -= dt;
+    const scale = G.phase === "fly" ? (G.fast ? 3 : G.slow > 0 ? 0.4 : 1) : 1;
+    G.simAcc = (G.simAcc || 0) + dt * scale;
+    const steps = Math.floor(G.simAcc / E.DT); G.simAcc -= steps * E.DT;
+    if (G.phase === "fly" && G.mode === "demo" && Math.random() < 0.2) { renderHUD(); }
     for (let k = 0; k < steps; k++) { G.time += E.DT; if (G.phase === "fly") { E.stepSim(G.S, E.DT, onEvent); if (G.S.done) { endFlight(); break; } } }
     if (G.S) for (const b of G.S.balls) { if (!b.trail) b.trail = []; if (b.state === "live") { b.trail.push({ x: b.x, y: b.y }); if (b.trail.length > 14) b.trail.shift(); } else if (b.trail.length) b.trail.shift(); }
-    if (G.phase === "clear" && G.phaseT > 1.5) advance(false);
+    if (G.phase === "fly" && G.S && Math.random() < 0.1) updateHelp();
+    if (G.phase === "clear" && G.phaseT > (G.mode === "demo" ? 1.8 : 1.5)) advance(false);
     else if (G.phase === "failed" && G.phaseT > 0.9) { G.phase = "failcard"; showFailCard(); }
   }
 
@@ -664,16 +741,17 @@
     }
   }
   function easeBack(t) { const c = 1.9; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); }
+  const ORB_COL = { 2: "#b9a6ff", 3: "#6fe6ff", 4: "#ffd25a", 5: "#ff4f9a", 6: "#3fe0c5" };
   function drawOrb(o, i, now, lit) {
-    const r = Math.max(9, X(o.r)), pul = 1 + 0.08 * Math.sin(now / 200 + i * 2);
+    const r = Math.max(9, X(o.r)), pul = 1 + 0.08 * Math.sin(now / 200 + i * 2), m = o.m || 2, col = ORB_COL[m] || "#b9a6ff";
     ctx.save(); ctx.translate(X(o.x), X(o.y));
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.4); g.addColorStop(0, lit ? "rgba(120,255,190,0.45)" : "rgba(160,130,255,0.4)"); g.addColorStop(1, "rgba(160,130,255,0)");
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.4); g.addColorStop(0, lit ? "rgba(120,255,190,0.45)" : col + "66"); g.addColorStop(1, col + "00");
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r * 2.4, 0, TAU); ctx.fill();
-    ctx.strokeStyle = lit ? "#78ffbe" : "#b9a6ff"; ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 16; ctx.lineWidth = 2.5;
+    ctx.strokeStyle = lit ? "#78ffbe" : col; ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 16; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.arc(0, 0, r * pul, 0, TAU); ctx.stroke();
     ctx.rotate(-now / 900); ctx.setLineDash([3, 4]); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, 0, r * pul + 5, 0, TAU); ctx.stroke(); ctx.setLineDash([]); ctx.rotate(now / 900);
     ctx.shadowBlur = 0; ctx.fillStyle = "#ffffff"; ctx.font = "700 " + Math.max(10, Math.round(r * 0.95)) + "px Unbounded, 'Arial Black', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("×2", 0, 1); ctx.restore();
+    ctx.fillText("×" + m, 0, 1); ctx.restore();
   }
   function drawFocusMark(f, label) {
     ctx.save(); ctx.strokeStyle = "rgba(255,210,90,0.85)"; ctx.lineWidth = 1.6;
@@ -727,7 +805,8 @@
     ctx.beginPath(); ctx.arc(0, 0, tr * 0.55, 0, TAU); ctx.stroke(); ctx.fillStyle = "#fff4cc"; ctx.beginPath(); ctx.arc(0, 0, 3, 0, TAU); ctx.fill();
     ctx.restore();
     const orbs = E.orbsAt(L, G.time), used = G.S ? G.S.balls.reduce((m, b) => m | (b.state === "split" ? 0 : b.used), 0) : 0;
-    orbs.forEach((o, i) => drawOrb(o, i, now, (G.phase === "aim" && aimInfo.kind === "orb" && aimInfo.i === i) || (used & (1 << i))));
+    const pvUsed = G.phase === "aim" && G.preview ? G.preview.S.balls.reduce((m, b) => m | b.used, 0) : 0;
+    orbs.forEach((o, i) => drawOrb(o, i, now, (pvUsed & (1 << i)) || (used & (1 << i))));
     if (G.ghost && G.phase === "aim") {
       ctx.save(); ctx.setLineDash([3, 6]); ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.lineWidth = 1.2; ctx.beginPath(); let pen = false;
       for (const p of G.ghost) { if (isNaN(p.x)) { pen = false; continue; } if (pen) ctx.lineTo(X(p.x), X(p.y)); else { ctx.moveTo(X(p.x), X(p.y)); pen = true; } }
@@ -769,10 +848,16 @@
     const g = ctx.createLinearGradient(X(st.x), X(st.y), X(a.x), X(a.y)); g.addColorStop(0, "rgba(" + col + ",0.95)"); g.addColorStop(1, "rgba(" + col + ",0.35)");
     ctx.strokeStyle = g; ctx.lineWidth = 2; ctx.setLineDash([2, 7]); ctx.lineCap = "round"; ctx.lineDashOffset = -now / 40;
     ctx.beginPath(); ctx.moveTo(X(st.x), X(st.y)); ctx.lineTo(X(a.x), X(a.y)); ctx.stroke(); ctx.setLineDash([]);
-    if (good) {
-      const o = E.orbsAt(L, G.time)[a.i], base = Math.atan2(a.uy, a.ux), len = L.n <= 4 ? 120 : 55;
-      ctx.strokeStyle = "rgba(120,255,190,0.35)"; ctx.setLineDash([2, 6]);
-      for (const s of [-1, 1]) { const an = base + s * L.spread; ctx.beginPath(); ctx.moveTo(X(o.x), X(o.y)); ctx.lineTo(X(o.x + Math.cos(an) * len), X(o.y + Math.sin(an) * len)); ctx.stroke(); }
+    if (good && G.preview && G.preview.S.splits) {
+      // assisted aim: every predicted ball path until it reaches the fence
+      ctx.setLineDash([2, 6]); ctx.lineDashOffset = -now / 40; ctx.lineWidth = 1.6;
+      for (const b of G.preview.S.balls) {
+        if (!b.gen) continue;
+        ctx.strokeStyle = "rgba(120,255,190," + Math.max(0.18, 0.5 - b.gen * 0.08) + ")"; ctx.beginPath(); let pen = false;
+        for (const p of b.path) { if (isNaN(p.x)) { pen = false; continue; } if (pen) ctx.lineTo(X(p.x), X(p.y)); else { ctx.moveTo(X(p.x), X(p.y)); pen = true; } }
+        if (b.state === "live") ctx.lineTo(X(b.x), X(b.y));
+        ctx.stroke();
+      }
     } else if (!neutral && a.kind !== "target") {
       ctx.strokeStyle = "#ff4766"; ctx.lineWidth = 2.5; const k = 6;
       ctx.beginPath(); ctx.moveTo(X(a.x) - k, X(a.y) - k); ctx.lineTo(X(a.x) + k, X(a.y) + k); ctx.moveTo(X(a.x) + k, X(a.y) - k); ctx.lineTo(X(a.x) - k, X(a.y) + k); ctx.stroke();
@@ -812,5 +897,5 @@
     if (G.screen === "menu") renderMenu();
   });
   NET.init();
-  window.__ellipso = { G, E, Gen, fire, play, advance, retry, startDefi, prog, placeSrc };
+  window.__ellipso = { G, E, Gen, fire, play, advance, retry, startDefi, prog, placeSrc, startDemo, predict };
 })();

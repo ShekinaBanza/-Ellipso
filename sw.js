@@ -1,5 +1,5 @@
 // Ellipso service worker : jeu jouable hors connexion
-const CACHE = "ellipso-v4";
+const CACHE = "ellipso-v5";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/maskable-512.png", "./icons/favicon.svg"];
 const FRESH = ["firebase-config.js", "admin.html"]; // toujours la dernière version quand on est en ligne
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting())); });

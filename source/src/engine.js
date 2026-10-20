@@ -2,7 +2,7 @@
 var ENGINE = (function () {
   "use strict";
   const TAU = Math.PI * 2;
-  const SPEED = 340, DT = 1 / 240, BALL_R = 4, WALL_W = 7, MAX_AGE = 10, MAX_BALLS = 32;
+  const SPEED = 340, DT = 1 / 240, BALL_R = 4, WALL_W = 7, MAX_AGE = 10, MAX_BALLS = 160;
 
   function mulberry32(a) {
     return function () {
@@ -78,7 +78,9 @@ var ENGINE = (function () {
   function split(S, b, i, born, ev) {
     const L = S.L, o = S.orbs[i], a = Math.atan2(b.vy, b.vx);
     b.state = "split"; b.x = o.x; b.y = o.y; b.path.push({ x: o.x, y: o.y });
-    for (const s of [-1, 1]) {
+    const m = o.m || 2; // x2, x3, x4…: the ball becomes m balls fanned out around its direction
+    const offs = m === 2 ? [-1, 1] : Array.from({ length: m }, (_, j) => -1 + (2 * j) / (m - 1));
+    for (const s of offs) {
       const c = makeBall(o.x, o.y, a + s * L.spread);
       c.used = b.used | (1 << i); c.bounces = b.bounces; c.age = b.age; c.gen = b.gen + 1; c.hue = b.hue;
       born.push(c);
@@ -100,7 +102,7 @@ var ENGINE = (function () {
     if (S.orbs) for (let i = 0; i < S.orbs.length; i++) {
       if (b.used & (1 << i)) continue;
       const o = S.orbs[i];
-      if (ptSeg(o.x, o.y, px, py, ex, ey) < o.r + BALL_R && S.balls.length + born.length < MAX_BALLS) { split(S, b, i, born, ev); return; }
+      if (ptSeg(o.x, o.y, px, py, ex, ey) < o.r + BALL_R && S.balls.length + born.length + (o.m || 2) <= MAX_BALLS) { split(S, b, i, born, ev); return; }
     }
     if (L.portals && !(b.pcool > 0)) for (const P of L.portals) {
       for (const [a, z] of [[P.a, P.b], [P.b, P.a]]) {
@@ -185,17 +187,19 @@ var ENGINE = (function () {
   function solve(L, N, dt) {
     N = N || 720; dt = dt || 1 / 75;
     const times = moving(L) ? [0, 1.1, 2.3] : [0];
-    let ok = 0, thr = 0; const good = [];
+    let ok = 0, thr = 0, maxHits = 0, bestAng = null; const good = [], hits = [];
     for (const t0 of times) for (let k = 0; k < N; k++) {
       const a = ((k + 0.5) / N) * TAU;
       if (!firstIsOrb(L, a, t0)) continue;
       const S = simulate(L, a, t0, dt);
       if (S.fail === "fall" && S.splits === 0) continue;
       thr++;
-      if (!S.fail && S.hits >= L.need) { ok++; if (t0 === 0) good.push(a); }
+      const h = S.fail ? 0 : S.hits; hits.push(h);
+      if (h > maxHits && t0 === 0) { maxHits = h; bestAng = a; }
+      if (h >= L.need) { ok++; if (t0 === 0) good.push(a); }
     }
     // okPer = winning directions per 360 deg, per start time (in half-degree units when N=720)
-    return { f: thr ? ok / thr : 0, okPer: ok / times.length, ok, thr, good, N };
+    return { f: thr ? ok / thr : 0, okPer: ok / times.length, ok, thr, good, N, maxHits, bestAng, hits, nTimes: times.length };
   }
 
   // ---- level generation ----
@@ -237,6 +241,7 @@ var ENGINE = (function () {
       }
     }
     if (fy) L.targetIdx = 1 - L.targetIdx;
+    if (L.bestAng != null) { if (fx) L.bestAng = Math.PI - L.bestAng; if (fy) L.bestAng = -L.bestAng; }
     return L;
   }
   function genLevel(n, seed) {
@@ -277,8 +282,116 @@ var ENGINE = (function () {
     const d = n - 1;
     return { hi: Math.max(0.22, 0.98 * Math.pow(0.955, d)), lo: Math.max(0.05, 0.5 * Math.pow(0.93, d)), minOk: n < 10 ? 6 : n < 25 ? 4 : n < 50 ? 3 : 2 };
   }
+  // ---- cascade levels: x2 -> x3 -> x4 ... chained in a line, the last multiplier sits on the free focus,
+  // so every ball it produces bounces once and converges on the target (the focal property, at scale)
+  function genCascade(n, seed, opts) {
+    opts = opts || {};
+    const d = n - 1, T0 = Date.now();
+    let best = null, bestScore = Infinity;
+    for (let at = 0; at < 60; at++) {
+      if (best && Date.now() - T0 > 500) break;
+      const r = mulberry32(mixSeed(seed, n) + at * 7919 + 555);
+      const rx = Math.round(155 + r() * 70), ry = 300, F = foci(rx, ry), ti = r() < 0.5 ? 1 : 0, target = F[ti], other = F[1 - ti];
+      const L = { n, type: "tir", cascade: true, rx, ry, target, targetIdx: ti, walls: [], holes: [], orbs: [], gems: [], features: [], hidden: false };
+      const depth = opts.depth || (n < 6 ? 2 : n < 14 ? (r() < 0.55 ? 3 : 2) : n < 30 ? (r() < 0.6 ? 3 : r() < 0.5 ? 4 : 2) : r() < 0.5 ? 4 : 3);
+      const mults = [];
+      for (let k = 0; k < depth; k++) mults.push(k === depth - 1 ? 3 + Math.floor(r() * (opts.big ? 3 : 2)) : 2 + Math.floor(r() * 2));
+      if (depth >= 4) mults[0] = 2;
+      while (mults.reduce((a, b) => a * b, 1) > 140) mults[mults.indexOf(Math.max(...mults.slice(0, -1)))]--;
+      L.spread = 0.05 + r() * 0.02;
+      L.maxB = opts.big ? 3 : n < 10 ? 3 : r() < 0.6 ? 3 : 2;
+      L.tr = 18;
+      const orbR = Math.max(13, 17 - d * 0.05);
+      // build the chain backwards from the free focus
+      const chain = new Array(depth);
+      chain[depth - 1] = { x: other.x, y: other.y, r: orbR + 2, m: mults[depth - 1], focus: true };
+      let pos = chain[depth - 1], th = r() * TAU, ok = true;
+      const far = (p, q, m) => Math.hypot(p.x - q.x, p.y - q.y) > m;
+      for (let k = depth - 2; k >= 0 && ok; k--) {
+        let placed = false;
+        for (let tries = 0; tries < 25 && !placed; tries++) {
+          const t = tries ? r() * TAU : th, dist = 85 + r() * 55;
+          const q = { x: pos.x - Math.cos(t) * dist, y: pos.y - Math.sin(t) * dist };
+          if (!inside(L, q.x, q.y, 0.78) || !far(q, target, 70) || !chain.every((o) => !o || far(q, o, 70))) continue;
+          const m = mults[k], offs = m === 2 ? [-1, 1] : Array.from({ length: m }, (_, j) => -1 + (2 * j) / (m - 1));
+          const off = offs[Math.floor(r() * offs.length)] * L.spread; // which fan member continues the chain
+          chain[k] = { x: q.x, y: q.y, r: orbR, m };
+          th = t - off; pos = chain[k]; placed = true;
+        }
+        if (!placed) ok = false;
+      }
+      if (!ok) continue;
+      let start = null;
+      for (let tries = 0; tries < 20 && !start; tries++) {
+        const dist = 75 + r() * 70, q = { x: pos.x - Math.cos(th) * dist, y: pos.y - Math.sin(th) * dist };
+        if (inside(L, q.x, q.y, 0.85) && far(q, target, 120) && chain.every((o) => far(q, o, 60))) start = q;
+        else th += (r() - 0.5) * 0.02;
+      }
+      if (!start) continue;
+      L.start = start; L.orbs = chain.slice();
+      // optional decoy x2 elsewhere
+      if (n >= 6 && r() < 0.5) {
+        const p = randomInside(r, L, 0.75, (x, y) => far({ x, y }, start, 70) && far({ x, y }, target, 70) && chain.every((o) => far({ x, y }, o, 70)));
+        if (p) L.orbs.push({ x: p.x, y: p.y, r: orbR, m: 2 });
+      }
+      // obstacles kept clear of the designed line
+      const line = [start].concat(chain);
+      const clearOf = (x1, y1, x2, y2, m) => line.every((p) => ptSeg(p.x, p.y, x1, y1, x2, y2) > m) && ptSeg(target.x, target.y, x1, y1, x2, y2) > m
+        && line.every((p, i) => i === 0 || segSeg(line[i - 1].x, line[i - 1].y, p.x, p.y, x1, y1, x2, y2) > m);
+      const nWalls = opts.big ? 0 : Math.min(5, Math.floor(d / 5) + (r() < 0.4 ? 1 : 0));
+      for (let i = 0; i < nWalls; i++) for (let tries = 0; tries < 30; tries++) {
+        const c = randomInside(r, L, 0.8, () => true), a = r() * Math.PI, len = 40 + r() * (40 + Math.min(110, d * 4));
+        const x1 = c.x - (Math.cos(a) * len) / 2, y1 = c.y - (Math.sin(a) * len) / 2, x2 = c.x + (Math.cos(a) * len) / 2, y2 = c.y + (Math.sin(a) * len) / 2;
+        if (!inside(L, x1, y1, 0.9) || !inside(L, x2, y2, 0.9) || !clearOf(x1, y1, x2, y2, 28)) continue;
+        const w = { x1, y1, x2, y2 };
+        if (n >= 8 && r() < 0.3) w.bump = true;
+        L.walls.push(w); break;
+      }
+      if (!opts.big && n >= 9 && r() < Math.min(0.4, 0.15 + (n - 9) * 0.015)) for (let tries = 0; tries < 30; tries++) {
+        const c = randomInside(r, L, 0.55, () => true), len = 70 + r() * 90;
+        if ([[1, 0], [0, 1], [-1, 0], [0, -1]].some(([u, v]) => !inside(L, c.x + (u * len) / 2, c.y + (v * len) / 2, 0.95))) continue;
+        if (!line.concat([target]).every((p) => Math.hypot(c.x - p.x, c.y - p.y) > len / 2 + 22)) continue;
+        L.walls.push({ rot: { cx: c.x, cy: c.y, len, speed: (0.5 + r() * 0.8) * (r() < 0.5 ? -1 : 1), a0: r() * TAU } }); break;
+      }
+      if (!opts.big && n >= 16 && r() < 0.35) {
+        const hr = 14 + r() * 6, p = randomInside(r, L, 0.7, (x, y) => line.concat([target]).every((q) => Math.hypot(x - q.x, y - q.y) > hr + 45) && line.every((q, i) => i === 0 || ptSeg(x, y, line[i - 1].x, line[i - 1].y, q.x, q.y) > hr + 25));
+        if (p) L.holes.push({ x: p.x, y: p.y, r: hr });
+      }
+      // measure: best possible number of balls, and how forgiving the aim is
+      L.need = 1;
+      const res = solve(L, 720);
+      const top = res.maxHits;
+      if (top < chain[depth - 1].m + 1) continue;
+      L.need = Math.max(2, Math.round(top * (opts.big ? 0.3 : n < 6 ? 0.3 : 0.4)));
+      L.star2 = Math.max(L.need + 1, Math.round(top * 0.7)); L.star3 = Math.max(L.star2 + 1, top);
+      const ok2 = res.hits.filter((h) => h >= L.need).length;
+      L.f = res.thr ? ok2 / res.thr : 0; L.okPer = ok2 / res.nTimes; L.bestAng = res.bestAng; L.maxHits = top; L.mults = mults;
+      L._good = res.good.length ? res.good : [res.bestAng];
+      const prod = mults.reduce((x, y) => x * y, 1);
+      const sc = (L.okPer < 3 ? 3 - L.okPer : 0) + Math.max(0, 0.6 - top / prod) * 6 + (opts.big ? -top / 100 : 0);
+      if (!best || sc < bestScore) { best = L; bestScore = sc; }
+      if (sc <= 0 && !opts.big) break;
+    }
+    return best;
+  }
+  // showcase levels for the demo mode: long chains, no obstacles, the biggest convergence we can build
+  function genDemo(n, seed) {
+    const L = genCascade(n, seed, { depth: n % 3 === 0 ? 3 : 4, big: true });
+    if (!L) return null;
+    const r = mulberry32(mixSeed(seed, n) + 99);
+    mirror(L, r() < 0.5, r() < 0.5);
+    L.n = n; L.demo = true; L.features = ["cascade"]; delete L._good;
+    return L;
+  }
   function genRaw(n, seed) {
     if (n % 5 === 0) return genBonus(n, seed);
+    if (n >= 2) {
+      const rc = mulberry32(mixSeed(seed, n) + 2024);
+      if (n === 2 || rc() < (n < 8 ? 0.7 : 0.6)) {
+        const C = genCascade(n, seed);
+        if (C) { finishLevel(C, n, seed); return C; }
+      }
+    }
     const d = n - 1, B = band(n), T0 = Date.now();
     let best = null, bestScore = Infinity;
     for (let at = 0; at < 90; at++) {
@@ -398,7 +511,11 @@ var ENGINE = (function () {
     }
     if (!best) { const alt = genRaw(n, seed + 1); alt.n = n; return alt; } // extremely unlikely fallback: borrow a layout
     const L = best; L.n = n;
-    L.features.push("orb");
+    finishLevel(L, n, seed);
+    return L;
+  }
+  function finishLevel(L, n, seed) {
+    if (L.cascade) L.features.push("cascade"); else L.features.push("orb");
     if (L.orbs.some((o) => o.focus)) L.features.push("focus");
     if (L.hidden) L.features.push("hidden");
     if (L.walls.some((w) => w.rot)) L.features.push("rot");
@@ -427,9 +544,8 @@ var ENGINE = (function () {
     }
     if (L.gems.length) L.features.push("gem");
     delete L._good;
-    return L;
   }
 
-  return { TAU, SPEED, DT, BALL_R, WALL_W, MAX_AGE, THEMES, mulberry32, foci, wallsAt, orbsAt, moving, ptSeg, rayEllipse, raySeg, rayCircle, inside, makeBall, newSim, stepSim, simulate, solve, genLevel, band };
+  return { genCascade, genDemo, MAX_BALLS, TAU, SPEED, DT, BALL_R, WALL_W, MAX_AGE, THEMES, mulberry32, foci, wallsAt, orbsAt, moving, ptSeg, rayEllipse, raySeg, rayCircle, inside, makeBall, newSim, stepSim, simulate, solve, genLevel, band };
 })();
 if (typeof module !== "undefined") module.exports = ENGINE;

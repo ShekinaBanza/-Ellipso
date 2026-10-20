@@ -4,7 +4,7 @@ rd=lambda f: open(os.path.join(S,f),encoding='utf8').read()
 css, body, eng, game, logo = rd('style.css'), rd('body.html'), rd('engine.js'), rd('game.js'), rd('logo.svg')
 core, net, ads, comm = rd('core.js'), rd('net.js'), rd('ads.js'), rd('community.js')
 A=os.path.join(R,'admin'); ra=lambda f: open(os.path.join(A,f),encoding='utf8').read()
-VERSION='ellipso-v4'
+VERSION='ellipso-v5'
 inline_logo = logo.replace('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">','<svg class="logo" viewBox="0 0 512 512" aria-hidden="true">')
 body = body.replace('{{LOGO}}', inline_logo)
 FONTS='<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Outfit:wght@400;600;700&display=swap">'

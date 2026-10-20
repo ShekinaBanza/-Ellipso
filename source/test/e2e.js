@@ -18,7 +18,7 @@ const assert = (c, m) => { if (!c) { throw new Error("ÉCHEC : " + m); } log("  
   const shot = (p, n) => p.screenshot({ path: path.join(OUT, n + ".png") });
   const closeModals = async (p) => { for (const id of ["news", "gift"]) while (await p.isVisible("#" + id)) { await p.click(id === "news" ? "#bNewsOk" : "#bGift"); await p.waitForTimeout(150); } };
   const winLevel = (p) => p.evaluate(() => { const { G, E } = window.__ellipso, L = G.L; if (L.type === "salve") { G.src = { x: L.other.x, y: L.other.y }; G.locked = true; document.getElementById("bSalvo").click(); return "salve"; } for (let k = 0; k < 2880; k++) { const a = (k / 2880) * E.TAU, S = E.simulate(L, a, G.time + 0.03, 1 / 240); if (!S.fail && S.hits >= L.need) { G.ang = a; window.__ellipso.fire(); return "tir"; } } return "none"; });
-  const fallShot = (p) => p.evaluate(() => { const { G, E } = window.__ellipso, L = G.L; for (let k = 0; k < 720; k++) { const a = (k / 720) * E.TAU; const S = E.simulate(L, a, G.time + 0.03, 1 / 240); if (S.fail === "fall") { G.ang = a; window.__ellipso.fire(); return true; } } return false; });
+  const fallShot = (p) => p.evaluate(() => { const { G, E } = window.__ellipso, L = G.L; for (let k = 0; k < 720; k++) { const a = (k / 720) * E.TAU; const ok = [-1.2, 0, 1.2].every((dd) => E.simulate(L, a + (dd * Math.PI) / 180, G.time + 0.03, 1 / 240).fail === "fall"); if (ok) { G.ang = a; window.__ellipso.fire(); return true; } } return false; });
 
   // ---------- player 1 ----------
   log("Joueur 1");
@@ -76,10 +76,13 @@ const assert = (c, m) => { if (!c) { throw new Error("ÉCHEC : " + m); } log("  
   const sameSeed = await p2.evaluate((s) => window.__ellipso.G.defi.seed === s, defi.seed);
   assert(sameSeed, "le joueur 2 joue la même graine de niveaux");
   assert((await winLevel(p2)) !== "none", "joueur 2 réussit le niveau 1 du défi");
-  await p2.waitForTimeout(4200); await closeModals(p2);
+  await p2.waitForTimeout(1500); await closeModals(p2);
   for (let i = 0; i < 3; i++) {
     await closeModals(p2);
-    await fallShot(p2); await p2.waitForTimeout(2600);
+    await p2.waitForFunction(() => window.__ellipso.G.phase === "aim" && window.__ellipso.G.L && !window.__ellipso.G.paused, null, { timeout: 15000 }).catch(() => {});
+    await closeModals(p2);
+    const fs2 = await fallShot(p2); await p2.waitForTimeout(2600);
+    log("    essai", i, "chute:", fs2, JSON.stringify(await p2.evaluate(() => ({ ph: window.__ellipso.G.phase, lv: window.__ellipso.G.dLives, n: window.__ellipso.G.n, paused: window.__ellipso.G.paused, news: !document.getElementById("news").hidden, fail: !document.getElementById("fail").hidden }))));
     if (i < 2 && (await p2.isVisible("#fail"))) { await p2.click("#bRetry"); await p2.waitForTimeout(400); }
   }
   await p2.waitForTimeout(800);
