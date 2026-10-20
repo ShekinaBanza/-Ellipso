@@ -26,7 +26,14 @@ var ENGINE = (function () {
       return w;
     });
   }
-  function moving(L) { return L.walls.some((w) => w.rot || w.slide); }
+  function moving(L) { return L.walls.some((w) => w.rot || w.slide) || (L.orbs || []).some((o) => o.move); }
+  function orbsAt(L, t) {
+    return (L.orbs || []).map((o) => {
+      if (!o.move) return o;
+      const m = o.move, k = Math.sin(t * m.speed + m.ph);
+      return { x: o.x + m.ax * k, y: o.y + m.ay * k, r: o.r, focus: o.focus, move: m };
+    });
+  }
   function ptSeg(px, py, ax, ay, bx, by) {
     const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy;
     let t = l ? ((px - ax) * dx + (py - ay) * dy) / l : 0;
@@ -69,7 +76,7 @@ var ENGINE = (function () {
     return { L, t: t0 || 0, balls: balls || [makeBall(L.start.x, L.start.y, ang)], hits: 0, fail: null, splits: 0, done: false };
   }
   function split(S, b, i, born, ev) {
-    const L = S.L, o = L.orbs[i], a = Math.atan2(b.vy, b.vx);
+    const L = S.L, o = S.orbs[i], a = Math.atan2(b.vy, b.vx);
     b.state = "split"; b.x = o.x; b.y = o.y; b.path.push({ x: o.x, y: o.y });
     for (const s of [-1, 1]) {
       const c = makeBall(o.x, o.y, a + s * L.spread);
@@ -80,6 +87,7 @@ var ENGINE = (function () {
     if (ev) ev("split", b, o.x, o.y, o);
   }
   function stepBall(S, b, walls, dt, ev, born) {
+    if (b.age > MAX_AGE) { b.state = "dead"; b.why = "lost"; b.path.push({ x: b.x, y: b.y }); if (ev) ev("lost", b, b.x, b.y); return; }
     const L = S.L, rx2 = L.rx * L.rx, ry2 = L.ry * L.ry, px = b.x, py = b.y;
     const dx = b.vx * dt, dy = b.vy * dt;
     let ex = px + dx, ey = py + dy, hit = false, tt = 1;
@@ -89,11 +97,21 @@ var ENGINE = (function () {
       tt = Math.max(0, Math.min(1, tt));
       ex = px + dx * tt; ey = py + dy * tt; hit = true;
     }
-    if (L.orbs) for (let i = 0; i < L.orbs.length; i++) {
+    if (S.orbs) for (let i = 0; i < S.orbs.length; i++) {
       if (b.used & (1 << i)) continue;
-      const o = L.orbs[i];
+      const o = S.orbs[i];
       if (ptSeg(o.x, o.y, px, py, ex, ey) < o.r + BALL_R && S.balls.length + born.length < MAX_BALLS) { split(S, b, i, born, ev); return; }
     }
+    if (L.portals && !(b.pcool > 0)) for (const P of L.portals) {
+      for (const [a, z] of [[P.a, P.b], [P.b, P.a]]) {
+        if (ptSeg(a.x, a.y, px, py, ex, ey) < P.r) {
+          b.path.push({ x: a.x, y: a.y }); b.path.push({ x: NaN, y: NaN }); b.path.push({ x: z.x, y: z.y });
+          b.x = z.x; b.y = z.y; b.pcool = 0.25; b.age += dt;
+          if (ev) ev("portal", b, a.x, a.y, z); return;
+        }
+      }
+    }
+    if (b.pcool > 0) b.pcool -= dt;
     if (ev && L.gems) for (const g of L.gems) if (!g.taken && ptSeg(g.x, g.y, px, py, ex, ey) < g.r + BALL_R) ev("gem", b, g.x, g.y, g);
     if (ptSeg(L.target.x, L.target.y, px, py, ex, ey) < L.tr) {
       b.state = "hit"; b.x = L.target.x; b.y = L.target.y; b.path.push({ x: b.x, y: b.y }); S.hits++;
@@ -104,6 +122,12 @@ var ENGINE = (function () {
     }
     for (const w of walls) {
       if (segSeg(px, py, ex, ey, w.x1, w.y1, w.x2, w.y2) < WALL_W / 2 + BALL_R) {
+        if (w.bump) { // bumper: reflects the ball, does not count as a fence contact
+          let nx = -(w.y2 - w.y1), ny = w.x2 - w.x1; const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
+          const dot = b.vx * nx + b.vy * ny; b.vx -= 2 * dot * nx; b.vy -= 2 * dot * ny;
+          b.path.push({ x: px, y: py }); b.x = px; b.y = py; b.age += dt;
+          if (ev) ev("bump", b, px, py); return;
+        }
         b.state = "dead"; b.why = "wall"; b.x = ex; b.y = ey; b.path.push({ x: ex, y: ey });
         if (ev) ev("wall", b, ex, ey); return;
       }
@@ -128,7 +152,7 @@ var ENGINE = (function () {
   }
   function stepSim(S, dt, ev) {
     if (S.done) return;
-    const walls = wallsAt(S.L, S.t); S.t += dt;
+    const walls = wallsAt(S.L, S.t); S.orbs = orbsAt(S.L, S.t); S.t += dt;
     const born = [];
     for (const b of S.balls) { if (b.state === "live") stepBall(S, b, walls, dt, ev, born); if (S.fail) break; }
     for (const c of born) S.balls.push(c);
@@ -146,12 +170,16 @@ var ENGINE = (function () {
   function firstIsOrb(L, a, t0) {
     const ux = Math.cos(a), uy = Math.sin(a), sx = L.start.x, sy = L.start.y;
     let tO = Infinity;
-    for (const o of L.orbs) tO = Math.min(tO, rayCircle(sx, sy, ux, uy, o.x, o.y, o.r + BALL_R));
+    for (const o of orbsAt(L, t0)) tO = Math.min(tO, rayCircle(sx, sy, ux, uy, o.x, o.y, o.r + BALL_R + (o.move ? 30 : 0)));
+    let tX = Infinity; // bumpers and portals redirect the ball: let the full simulation decide
+    for (const w of wallsAt(L, t0)) if (w.bump) tX = Math.min(tX, raySeg(sx, sy, ux, uy, w));
+    for (const P of L.portals || []) tX = Math.min(tX, rayCircle(sx, sy, ux, uy, P.a.x, P.a.y, P.r), rayCircle(sx, sy, ux, uy, P.b.x, P.b.y, P.r));
+    if (tX < tO && tX < rayEllipse(sx, sy, ux, uy, L.rx, L.ry)) return true;
     if (tO === Infinity) return false;
     if (rayEllipse(sx, sy, ux, uy, L.rx, L.ry) < tO) return false;
     if (rayCircle(sx, sy, ux, uy, L.target.x, L.target.y, L.tr) < tO) return false;
     for (const h of L.holes || []) if (rayCircle(sx, sy, ux, uy, h.x, h.y, h.r) < tO) return false;
-    for (const w of wallsAt(L, t0)) if (raySeg(sx, sy, ux, uy, w) < tO) return false;
+    for (const w of wallsAt(L, t0)) if (!w.bump && raySeg(sx, sy, ux, uy, w) < tO) return false;
     return true;
   }
   function solve(L, N, dt) {
@@ -194,7 +222,9 @@ var ENGINE = (function () {
     const sx = fx ? -1 : 1, sy = fy ? -1 : 1;
     const P = (p) => { if (p) { p.x *= sx; p.y *= sy; } };
     [L.start, L.target, L.other].forEach(P);
-    (L.orbs || []).forEach(P); (L.gems || []).forEach(P); (L.holes || []).forEach(P);
+    (L.orbs || []).forEach((o) => { P(o); if (o.move) { o.move.ax *= sx; o.move.ay *= sy; } });
+    (L.gems || []).forEach(P); (L.holes || []).forEach(P); (L.fog || []).forEach(P);
+    (L.portals || []).forEach((q) => { P(q.a); P(q.b); });
     for (const w of L.walls) {
       if (w.rot) {
         w.rot.cx *= sx; w.rot.cy *= sy;
@@ -224,11 +254,20 @@ var ENGINE = (function () {
     }
     return null;
   }
+  const THEMES = ["or", "galaxie", "glace", "feu", "arcenciel", "jungle"];
   function genBonus(n, seed) {
     const r = mulberry32(mixSeed(seed, n) + 99);
-    const rx = Math.round(150 + r() * 70), ry = 300, F = foci(rx, ry), ti = r() < 0.5 ? 1 : 0;
-    const L = { n, type: "salve", rx, ry, target: F[ti], targetIdx: ti, other: F[1 - ti], maxB: 1, tr: 22, noFall: true,
-      hidden: n >= 15, walls: [], holes: [], orbs: [], gems: [], balls: 64, need: 0, spread: 0, features: ["bonus"] };
+    const k = Math.floor(n / 5), theme = THEMES[(k + (seed % THEMES.length)) % THEMES.length];
+    const rx = Math.round(120 + r() * 110), ry = 300, F = foci(rx, ry), ti = r() < 0.5 ? 1 : 0;
+    const L = { n, type: "salve", theme, rx, ry, target: F[ti], targetIdx: ti, other: F[1 - ti], maxB: 1, tr: 22, noFall: true,
+      hidden: n >= 15 && r() < 0.5, walls: [], holes: [], orbs: [], gems: [], balls: 48 + Math.min(40, k * 4), need: 0, spread: 0, features: ["bonus"] };
+    const ng = 3 + Math.floor(r() * 4); // crystals placed on the paths of a perfect salvo
+    for (let i = 0; i < ng; i++) {
+      const a = r() * TAU, u = rayEllipse(L.other.x, L.other.y, Math.cos(a), Math.sin(a), rx, ry);
+      const P = { x: L.other.x + Math.cos(a) * u, y: L.other.y + Math.sin(a) * u }, w = 0.25 + r() * 0.5;
+      const g = r() < 0.5 ? { x: L.other.x + (P.x - L.other.x) * w, y: L.other.y + (P.y - L.other.y) * w } : { x: P.x + (L.target.x - P.x) * w, y: P.y + (L.target.y - P.y) * w };
+      if ([L.target, L.other].concat(L.gems).every((q) => Math.hypot(q.x - g.x, q.y - g.y) > 40)) L.gems.push({ x: g.x, y: g.y, r: 9, taken: false });
+    }
     if (n >= 20) { const y = (r() < 0.5 ? -1 : 1) * 40; L.walls.push({ x1: -25, y1: y, x2: 25, y2: y }); }
     L.start = { x: 0, y: -Math.sign(L.target.y) * ry * 0.2 };
     if (L.hidden) L.features.push("hidden");
@@ -257,7 +296,12 @@ var ENGINE = (function () {
       const nSlide = n >= 11 && r() < Math.min(0.5, 0.25 + (n - 11) * 0.02) ? (n > 35 && r() < 0.3 ? 2 : 1) : 0;
       const nHole = n >= 16 && r() < Math.min(0.6, 0.25 + (n - 16) * 0.02) ? (n > 30 && r() < 0.4 ? 2 : 1) : 0;
       L.timer = n >= 21 && r() < Math.min(0.5, 0.2 + (n - 21) * 0.02) ? Math.max(4, Math.round(10 - (n - 21) * 0.08)) : 0;
-      const hard = (L.hidden ? 1 : 0) + (nRot ? 1 : 0) + (nSlide ? 1 : 0) + (nHole ? 1 : 0) + (L.timer ? 1 : 0) + (L.maxB === 1 ? 1 : 0) + (L.need >= 3 ? 1 : 0);
+      const nBump = n >= 8 && r() < Math.min(0.5, 0.25 + (n - 8) * 0.02) ? (n > 25 && r() < 0.4 ? 2 : 1) : 0;
+      const nPortal = n >= 18 && r() < Math.min(0.45, 0.25 + (n - 18) * 0.015) ? 1 : 0;
+      const moveOrb = n >= 24 && r() < Math.min(0.45, 0.2 + (n - 24) * 0.015);
+      const nFog = n >= 28 && r() < Math.min(0.45, 0.2 + (n - 28) * 0.015) ? (n > 45 && r() < 0.4 ? 2 : 1) : 0;
+      const hard = (L.hidden ? 1 : 0) + (nRot ? 1 : 0) + (nSlide ? 1 : 0) + (nHole ? 1 : 0) + (L.timer ? 1 : 0) + (L.maxB === 1 ? 1 : 0) + (L.need >= 3 ? 1 : 0)
+        + (nPortal ? 1 : 0) + (moveOrb ? 1 : 0) + (nFog ? 1 : 0);
       if (hard > 1 + Math.floor(n / 7)) continue;
       // start + orbs
       const far = (p, q, m) => Math.hypot(p.x - q.x, p.y - q.y) > m;
@@ -265,7 +309,8 @@ var ENGINE = (function () {
       if (!start) continue;
       L.start = start;
       const orbR = Math.max(8, 14 - d * 0.1);
-      const pFocus = n <= 4 ? 1 : Math.max(0.2, 1 - (n - 4) * 0.035);
+      // never put a x2 point on a focus when foci are hidden: it would give their position away
+      const pFocus = L.hidden ? 0 : n <= 4 ? 1 : Math.max(0.2, 1 - (n - 4) * 0.035);
       let o1 = r() < pFocus ? { x: other.x, y: other.y, r: orbR, focus: true }
         : (() => { const p = randomInside(r, L, 0.75, (x, y) => far({ x, y }, start, 70) && far({ x, y }, target, 80)); return p && { x: p.x, y: p.y, r: orbR }; })();
       if (!o1) continue;
@@ -284,6 +329,11 @@ var ENGINE = (function () {
       if (!p2) p2 = randomInside(r, L, 0.75, (x, y) => far({ x, y }, start, 70) && far({ x, y }, target, 80) && far({ x, y }, o1, 90));
       if (!p2) continue;
       L.orbs = [o1, { x: p2.x, y: p2.y, r: orbR }];
+      if (moveOrb) { // the non-focus x2 point drifts back and forth
+        const o = L.orbs[1], a = r() * TAU, amp = 22 + r() * 22;
+        if (inside(L, o.x + Math.cos(a) * amp, o.y + Math.sin(a) * amp, 0.85) && inside(L, o.x - Math.cos(a) * amp, o.y - Math.sin(a) * amp, 0.85))
+          o.move = { ax: Math.cos(a) * amp, ay: Math.sin(a) * amp, speed: 0.9 + r() * 0.8, ph: r() * TAU };
+      }
       if (r() < 0.5) L.orbs.reverse();
       const keyPts = [start, target].concat(L.orbs);
       const segClear = (x1, y1, x2, y2, m) => keyPts.every((p) => ptSeg(p.x, p.y, x1, y1, x2, y2) > m);
@@ -303,6 +353,25 @@ var ENGINE = (function () {
           } else if (!segClear(x1, y1, x2, y2, 28)) continue;
           L.walls.push(w); break;
         }
+      }
+      for (let i = 0; i < nBump; i++) {
+        for (let tries = 0; tries < 30; tries++) {
+          const c = randomInside(r, L, 0.75, () => true), a = r() * Math.PI, len = 45 + r() * 50;
+          const x1 = c.x - (Math.cos(a) * len) / 2, y1 = c.y - (Math.sin(a) * len) / 2, x2 = c.x + (Math.cos(a) * len) / 2, y2 = c.y + (Math.sin(a) * len) / 2;
+          if (!inside(L, x1, y1, 0.9) || !inside(L, x2, y2, 0.9) || !segClear(x1, y1, x2, y2, 30)) continue;
+          L.walls.push({ x1, y1, x2, y2, bump: true }); break;
+        }
+      }
+      for (let i = 0; i < nPortal; i++) {
+        const pr = 13;
+        const ok = (x, y) => keyPts.every((q) => Math.hypot(x - q.x, y - q.y) > 55) && L.walls.every((w) => w.rot || ptSeg(x, y, w.x1, w.y1, w.x2, w.y2) > 30);
+        const a = randomInside(r, L, 0.72, ok); if (!a) continue;
+        const b = randomInside(r, L, 0.72, (x, y) => ok(x, y) && Math.hypot(x - a.x, y - a.y) > 170); if (!b) continue;
+        L.portals = [{ a, b, r: pr }];
+      }
+      for (let i = 0; i < nFog; i++) {
+        const p = randomInside(r, L, 0.6, (x, y) => Math.hypot(x - target.x, y - target.y) > 70 && Math.hypot(x - start.x, y - start.y) > 70);
+        if (p) (L.fog = L.fog || []).push({ x: p.x, y: p.y, r: 45 + r() * 30 });
       }
       for (let i = 0; i < nRot; i++) {
         for (let tries = 0; tries < 30; tries++) {
@@ -338,6 +407,10 @@ var ENGINE = (function () {
     if (L.timer) L.features.push("timer");
     if (L.need >= 3) L.features.push("need" + L.need);
     if (L.maxB < 3) L.features.push("fence" + L.maxB);
+    if (L.walls.some((w) => w.bump)) L.features.push("bump");
+    if (L.portals && L.portals.length) L.features.push("portal");
+    if (L.orbs.some((o) => o.move)) L.features.push("moveorb");
+    if (L.fog && L.fog.length) L.features.push("fog");
     // gems along a winning path
     const r = mulberry32(mixSeed(seed, n) + 31337), good = L._good || [];
     const nG = n >= 3 ? (r() < 0.6 ? 1 : 0) + (n >= 12 && r() < 0.35 ? 1 : 0) : 0;
@@ -357,6 +430,6 @@ var ENGINE = (function () {
     return L;
   }
 
-  return { TAU, SPEED, DT, BALL_R, WALL_W, MAX_AGE, mulberry32, foci, wallsAt, moving, ptSeg, rayEllipse, raySeg, rayCircle, inside, makeBall, newSim, stepSim, simulate, solve, genLevel, band };
+  return { TAU, SPEED, DT, BALL_R, WALL_W, MAX_AGE, THEMES, mulberry32, foci, wallsAt, orbsAt, moving, ptSeg, rayEllipse, raySeg, rayCircle, inside, makeBall, newSim, stepSim, simulate, solve, genLevel, band };
 })();
 if (typeof module !== "undefined") module.exports = ENGINE;

@@ -1,0 +1,91 @@
+rules_version = '2';
+// Règles de sécurité Ellipso : à coller dans Console Firebase > Firestore > Règles (ou `firebase deploy --only firestore:rules`)
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && exists(/databases/$(db)/documents/admins/$(request.auth.uid)); }
+    function me() { return get(/databases/$(db)/documents/users/$(request.auth.uid)).data; }
+    function okPseudo(p) { return p is string && p.size() >= 2 && p.size() <= 16; }
+    function onlyKeys(keys) { return request.resource.data.diff(resource == null ? {} : resource.data).affectedKeys().hasOnly(keys); }
+    function smallIncrements(keys) {
+      return request.resource.data.keys().hasOnly(keys);
+    }
+
+    // Admins : créés à la main dans la console (collection admins, id = uid du compte admin)
+    match /admins/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Réglages du jeu (vies, pubs, annonce…) : lisibles par tous, modifiables par l'admin
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Joueurs (comptes anonymes)
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == uid && okPseudo(request.resource.data.pseudo)
+        && request.resource.data.banned == false && request.resource.data.muted == false
+        && request.resource.data.bestLevel is number && request.resource.data.bestLevel <= 100000;
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid
+        && request.resource.data.banned == resource.data.banned
+        && request.resource.data.muted == resource.data.muted
+        && okPseudo(request.resource.data.pseudo)
+        && request.resource.data.bestLevel <= resource.data.bestLevel + 10
+        && request.resource.data.points <= resource.data.points + 20000);
+      allow delete: if isAdmin();
+    }
+
+    // Classement de la semaine
+    match /weeks/{wk}/scores/{uid} {
+      allow read: if signedIn();
+      allow write: if isAdmin() || (signedIn() && request.auth.uid == uid && !me().banned);
+    }
+
+    // Défis entre amis
+    match /challenges/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.by == request.auth.uid && request.resource.data.seed is number && request.resource.data.plays == 0;
+      allow update: if isAdmin() || (signedIn() && onlyKeys(['plays']) && request.resource.data.plays == resource.data.plays + 1);
+      allow delete: if isAdmin();
+      match /results/{uid} {
+        allow read: if signedIn();
+        allow write: if isAdmin() || (signedIn() && request.auth.uid == uid && request.resource.data.level is number && request.resource.data.level <= 100000);
+      }
+    }
+
+    // Chat public
+    match /chat/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 200
+        && okPseudo(request.resource.data.pseudo)
+        && request.resource.data.at == request.time
+        && me().muted == false && me().banned == false;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+    match /reports/{id} {
+      allow create: if signedIn() && request.resource.data.by == request.auth.uid;
+      allow read, delete: if isAdmin();
+    }
+
+    // Publicités maison : les joueurs peuvent seulement ajouter +1 vue ou +1 clic
+    match /ads/{id} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (signedIn() && onlyKeys(['impressions', 'clicks'])
+        && request.resource.data.impressions >= resource.data.impressions && request.resource.data.impressions <= resource.data.impressions + 1
+        && request.resource.data.clicks >= resource.data.clicks && request.resource.data.clicks <= resource.data.clicks + 1);
+    }
+
+    // Statistiques (compteurs) : lecture admin, incréments par les joueurs
+    match /stats/{day} {
+      allow read: if isAdmin();
+      allow create, update: if signedIn() && smallIncrements(['levels', 'fails', 'games', 'newUsers', 'users', 'sessions', 'adsOwn', 'adsGoogle', 'adsDemo', 'adClicks', 'messages', 'challenges']);
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,13 @@
+rules_version = '2';
+// Fichiers des pubs maison (images / vidéos), envoyés depuis l'espace admin
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /ads/{file} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
+        && request.resource.size < 20 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*') || request.resource.contentType.matches('video/.*'));
+    }
+  }
+}

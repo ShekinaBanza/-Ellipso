@@ -1,0 +1,130 @@
+<main class="adm">
+  <header class="top">
+    <div class="brand"><img src="icons/icon-192.png" alt="" width="34" height="34"><div><b>Ellipso</b><small>Espace admin</small></div></div>
+    <div class="who" id="who" hidden><span id="whoMail"></span><button id="bOut" class="btn ghost">Déconnexion</button></div>
+  </header>
+
+  <section id="setup" class="panel narrow" hidden>
+    <h1>Serveur non configuré</h1>
+    <p>Le fichier <code>firebase-config.js</code> est encore vide. Suis le guide <code>LISEZMOI.md</code> (partie « Créer le serveur Firebase »), colle ta configuration dans ce fichier, puis recharge cette page.</p>
+  </section>
+
+  <section id="login" class="panel narrow" hidden>
+    <h1>Connexion admin</h1>
+    <form id="loginForm" class="form">
+      <label for="lMail">E-mail</label><input id="lMail" type="email" autocomplete="username" required>
+      <label for="lPass">Mot de passe</label><input id="lPass" type="password" autocomplete="current-password" required>
+      <button class="btn primary" type="submit">Se connecter</button>
+      <p class="err" id="lErr"></p>
+    </form>
+  </section>
+
+  <section id="notAdmin" class="panel narrow" hidden>
+    <h1>Accès refusé</h1>
+    <p>Ce compte n'est pas encore administrateur. Dans la console Firebase, ouvre <b>Firestore</b>, crée la collection <code>admins</code> et ajoute un document dont l'identifiant est :</p>
+    <p class="uid" id="naUid"></p>
+    <p>Ensuite, recharge cette page.</p>
+  </section>
+
+  <div id="app" hidden>
+    <nav class="tabs" id="tabs">
+      <button data-t="dash" class="on">Tableau de bord</button>
+      <button data-t="users">Joueurs</button>
+      <button data-t="chat">Chat</button>
+      <button data-t="reports">Signalements <span class="badge" id="repCount" hidden></span></button>
+      <button data-t="ads">Publicités</button>
+      <button data-t="defis">Défis</button>
+      <button data-t="settings">Réglages</button>
+    </nav>
+
+    <section data-p="dash" class="page">
+      <div class="kpis" id="kpis"></div>
+      <div class="grid2">
+        <div class="panel"><h2>Activité des 14 derniers jours</h2><div id="chart" class="chart"></div><p class="legend"><i class="c1"></i>Niveaux réussis <i class="c2"></i>Nouveaux joueurs</p></div>
+        <div class="panel"><h2>En ligne maintenant <span class="live" id="onlineN">0</span></h2><ul class="list" id="onlineList"><li class="muted">Personne pour l'instant.</li></ul></div>
+      </div>
+      <div class="grid2">
+        <div class="panel"><h2>Pays des joueurs</h2><ul class="bars" id="countries"></ul></div>
+        <div class="panel"><h2>Appareils</h2><ul class="bars" id="devices"></ul></div>
+      </div>
+    </section>
+
+    <section data-p="users" class="page" hidden>
+      <div class="panel">
+        <div class="bar"><h2>Joueurs</h2><input id="uSearch" placeholder="Rechercher un pseudo…" aria-label="Rechercher"><select id="uFilter" aria-label="Filtre"><option value="all">Tous</option><option value="online">En ligne</option><option value="banned">Suspendus</option><option value="muted">Muets</option></select></div>
+        <div class="tablewrap"><table class="tbl"><thead><tr><th></th><th>Pseudo</th><th>Pays</th><th>Niveau</th><th>Record</th><th>Points</th><th>Appareil</th><th>Dernière visite</th><th>Actions</th></tr></thead><tbody id="uBody"></tbody></table></div>
+        <button class="btn ghost" id="uMore">Charger plus</button>
+      </div>
+    </section>
+
+    <section data-p="chat" class="page" hidden>
+      <div class="panel">
+        <div class="bar"><h2>Chat en direct</h2><label class="switch"><input type="checkbox" id="chatOn"> Chat ouvert</label></div>
+        <ul class="msgs" id="msgs"></ul>
+      </div>
+    </section>
+
+    <section data-p="reports" class="page" hidden>
+      <div class="panel"><h2>Messages signalés</h2><ul class="msgs" id="reports"></ul></div>
+    </section>
+
+    <section data-p="ads" class="page" hidden>
+      <div class="grid2">
+        <div class="panel">
+          <h2 id="adFormTitle">Nouvelle publicité</h2>
+          <form id="adForm" class="form">
+            <label for="aTitle">Titre (affiché sous la pub)</label><input id="aTitle" maxlength="80" placeholder="Ex. Promo boutique Kinshasa">
+            <label for="aType">Type</label><select id="aType"><option value="image">Image</option><option value="video">Vidéo (MP4)</option></select>
+            <label for="aUrl">Adresse du fichier (image ou vidéo)</label><input id="aUrl" placeholder="https://…/pub.jpg ou ads/pub.mp4">
+            <label for="aFile">… ou envoyer un fichier</label><input id="aFile" type="file" accept="image/*,video/mp4,video/webm">
+            <p class="hint" id="aUpHint">L'envoi de fichiers utilise Firebase Storage. Sinon, mets le fichier dans le dossier <code>ads/</code> du dépôt et écris <code>ads/nom-du-fichier</code>.</p>
+            <label for="aLink">Lien quand on clique (optionnel)</label><input id="aLink" placeholder="https://wa.me/243… ou ton site">
+            <fieldset><legend>Emplacements</legend>
+              <label><input type="checkbox" value="interstitial" class="aPl" checked> Entre les niveaux</label>
+              <label><input type="checkbox" value="reward" class="aPl" checked> Pub récompensée (vie, passer un niveau)</label>
+              <label><input type="checkbox" value="banner" class="aPl"> Bannière 320×50 (menu)</label>
+            </fieldset>
+            <div class="row2"><div><label for="aSkip">Durée avant « Passer » (s)</label><input id="aSkip" type="number" min="2" max="30" value="5"></div><div><label for="aWeight">Poids (fréquence)</label><input id="aWeight" type="number" min="1" max="10" value="1"></div></div>
+            <label class="switch"><input type="checkbox" id="aActive" checked> Active</label>
+            <div class="preview" id="aPreview"></div>
+            <div class="row2"><button class="btn primary" type="submit" id="aSave">Enregistrer la pub</button><button class="btn ghost" type="button" id="aCancel" hidden>Annuler</button></div>
+            <p class="err" id="aErr"></p>
+          </form>
+        </div>
+        <div class="panel">
+          <h2>Réglages des pubs</h2>
+          <form id="adCfg" class="form">
+            <label for="cEvery">Pub entre les niveaux : tous les … niveaux réussis</label><input id="cEvery" type="number" min="1" max="20">
+            <label for="cShare">Part de tes pubs quand Google est actif (%)</label><input id="cShare" type="number" min="0" max="100">
+            <label class="switch"><input type="checkbox" id="cReward"> Pubs récompensées actives</label>
+            <label class="switch"><input type="checkbox" id="cGoogle"> Utiliser Google AdSense (H5 Games Ads)</label>
+            <label for="cClient">Identifiant éditeur AdSense</label><input id="cClient" placeholder="ca-pub-1234567890123456">
+            <label for="cSlot">Bloc bannière AdSense (optionnel)</label><input id="cSlot" placeholder="1234567890">
+            <label class="switch"><input type="checkbox" id="cTest"> Mode test Google</label>
+            <button class="btn primary" type="submit">Enregistrer les réglages</button>
+          </form>
+        </div>
+      </div>
+      <div class="panel"><h2>Mes publicités</h2><div class="adlist" id="adList"><p class="muted">Aucune pub pour l'instant.</p></div></div>
+    </section>
+
+    <section data-p="defis" class="page" hidden>
+      <div class="panel"><h2>Défis récents</h2><div class="tablewrap"><table class="tbl"><thead><tr><th>Code</th><th>Créé par</th><th>Joueurs</th><th>Date</th><th></th></tr></thead><tbody id="dBody"></tbody></table></div></div>
+    </section>
+
+    <section data-p="settings" class="page" hidden>
+      <div class="panel narrowish">
+        <h2>Réglages du jeu</h2>
+        <form id="gameCfg" class="form">
+          <label for="sAnn">Annonce affichée dans le menu (vide = rien)</label><input id="sAnn" maxlength="140" placeholder="Ex. Tournoi ce week-end : top 10 récompensé !">
+          <div class="row2"><div><label for="sLives">Vies maximum</label><input id="sLives" type="number" min="1" max="20"></div><div><label for="sRegen">Recharge d'une vie (minutes)</label><input id="sRegen" type="number" min="1" max="240"></div></div>
+          <div class="row2"><div><label for="sSkipB">Prix pour passer un niveau (base)</label><input id="sSkipB" type="number" min="0"></div><div><label for="sSkipN">+ par niveau</label><input id="sSkipN" type="number" min="0"></div></div>
+          <label class="switch"><input type="checkbox" id="sGift"> Cadeau du jour</label>
+          <label class="switch"><input type="checkbox" id="sChat"> Chat ouvert</label>
+          <button class="btn primary" type="submit">Enregistrer</button>
+        </form>
+      </div>
+    </section>
+  </div>
+  <div id="toast" class="toast" role="status" hidden></div>
+</main>
