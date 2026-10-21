@@ -18,25 +18,23 @@
 <meta property="og:description" content="Ellipso : un jeu de billard elliptique aux niveaux infinis. Tout ce qui part d'un foyer arrive à l'autre.">
 <meta property="og:image" content="icons/icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Outfit:wght@400;600;700&display=swap">
+<script src="firebase-config.js"></script>
 <script>
-  /* ====== CONFIGURATION PUB (voir LISEZMOI.md) ====== */
-  window.ELLIPSO_CONFIG = {
-    adClient: "",      // ex. "ca-pub-1234567890123456" (laisser vide = mode démo)
-    bannerSlot: "",    // ex. "1234567890" : bloc d'annonce display 320x50 pour le menu
-    adTest: true       // true = pubs de test Google. Mettre false une fois validé.
-  };
+  /* Pubs Google (H5 Games Ads). Les réglages se font dans l'espace admin (Publicités > Réglages des pubs). */
   window.adsbygoogle = window.adsbygoogle || [];
   window.adBreak = window.adConfig = function (o) { window.adsbygoogle.push(o); };
-  (function (c) {
-    if (!c.adClient) return;
+  window.ellipsoLoadAdsense = function (c) {
+    if (!c || !c.adClient || c.useGoogle === false || window.__adsenseLoaded) return;
+    window.__adsenseLoaded = true;
     var s = document.createElement("script");
     s.async = true; s.crossOrigin = "anonymous";
     s.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" + c.adClient;
     s.setAttribute("data-ad-client", c.adClient);
     s.setAttribute("data-ad-frequency-hint", "45s");
-    if (c.adTest) s.setAttribute("data-adbreak-test", "on");
+    if (c.adTest !== false) s.setAttribute("data-adbreak-test", "on");
     document.head.appendChild(s);
-  })(window.ELLIPSO_CONFIG);
+  };
+  try { window.ellipsoLoadAdsense(JSON.parse(localStorage.getItem("ellipso.cfg") || "{}")); } catch (e) {}
 </script>
 <style>
 /* Layout: full-screen neon table (canvas) with floating glass HUD; menus are glass cards over a live "attract" animation. Single committed dark arcade look. */
@@ -179,6 +177,90 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 .help.good { color: var(--mint); }
 .help.bad { color: var(--red); }
 .secondary:disabled { opacity: 0.4; cursor: default; }
+/* v4: lives, community, gifts, loader, house ads */
+.lives { display: flex; gap: 3px; justify-content: center; min-height: 14px; }
+.lives i { width: 13px; height: 13px; display: block; background: var(--line); -webkit-mask: var(--heart) center / contain no-repeat; mask: var(--heart) center / contain no-repeat; }
+.lives i.on { background: var(--pink); filter: drop-shadow(0 0 5px rgba(255, 79, 154, 0.8)); }
+.lives.big i { width: 26px; height: 26px; }
+.lives i.lost { animation: lose 0.5s ease-out; }
+@keyframes lose { 0% { transform: scale(1.7) rotate(-14deg); background: #fff; } 100% { transform: scale(1); } }
+:root { --heart: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.2 5.3 3.1 1.7-1.9 3.2-3.1 5.3-3.1 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z'/%3E%3C/svg%3E"); }
+.mlives { display: grid; justify-items: center; gap: 4px; font-size: 13px; color: var(--muted); min-height: 1.2em; }
+.mlives .lives i { width: 20px; height: 20px; }
+.timer { margin: 0; font-variant-numeric: tabular-nums; color: var(--gold); font-weight: 600; }
+.announce { margin: 0; max-width: 34ch; padding: 8px 14px; border-radius: 14px; background: rgba(255, 210, 90, 0.12); border: 1px solid rgba(255, 210, 90, 0.4); color: var(--gold); font-weight: 600; font-size: 14px; }
+.card.wide { width: min(100%, 460px); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); grid-template-rows: auto auto minmax(0, 1fr); text-align: left; padding: 18px 16px; gap: 12px; }
+.commhead { display: flex; align-items: center; justify-content: space-between; }
+.commhead .icon svg { fill: none; stroke: var(--fg); stroke-width: 2.4; stroke-linecap: round; }
+.tabs, .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.tabs button, .seg button { flex: 1 1 auto; padding: 9px 10px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.02); font-weight: 600; font-size: 14px; color: var(--muted); }
+.tabs button.on, .seg button.on { color: var(--ink); background: var(--cyan); border-color: var(--cyan); }
+.seg button { font-size: 13px; padding: 7px 8px; }
+.commbody { overflow-y: auto; min-height: 220px; display: grid; gap: 12px; align-content: start; padding-right: 2px; }
+.commbody h3, .commbody h4 { margin: 0; font-family: var(--display); }
+.commbody h4 { font-size: 14px; letter-spacing: 0.04em; color: var(--muted); }
+.muted { color: var(--muted); margin: 0; }
+.small { font-size: 12px; }
+.note { margin: 0; padding: 10px 12px; border-radius: 12px; background: rgba(111, 230, 255, 0.08); border: 1px solid rgba(111, 230, 255, 0.25); color: var(--fg); font-size: 14px; }
+.board { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.board li { display: grid; grid-template-columns: 28px 34px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); }
+.board li.me { border-color: var(--gold); background: rgba(255, 210, 90, 0.08); }
+.board li.muted { display: block; }
+.rk { font-family: var(--display); font-size: 14px; color: var(--muted); text-align: center; }
+.board li:nth-child(1) .rk { color: var(--gold); } .board li:nth-child(2) .rk { color: #d8e2ff; } .board li:nth-child(3) .rk { color: #ffb27a; }
+.av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: var(--ink); font-size: 15px; flex: none; }
+.who { display: grid; min-width: 0; line-height: 1.2; }
+.who b, .who small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who small { color: var(--muted); font-size: 12px; }
+.sc { display: grid; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.sc small { color: var(--muted); font-weight: 500; font-size: 12px; }
+.hero-defi { display: grid; gap: 8px; padding: 14px; border-radius: 18px; background: linear-gradient(135deg, rgba(111, 230, 255, 0.12), rgba(255, 79, 154, 0.12)); border: 1px solid var(--line); }
+.hero-defi p { margin: 0; color: var(--muted); }
+.defis { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.defis li { display: grid; gap: 8px; padding: 10px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); }
+.defis li > div:first-child { display: grid; } .defis small { color: var(--muted); }
+.defis .row { justify-content: flex-start; } .defis .pill { padding: 7px 12px; font-size: 13px; }
+.chat { display: grid; gap: 10px; align-content: start; max-height: 46vh; overflow-y: auto; padding: 2px; }
+.msg { display: flex; gap: 8px; align-items: flex-start; }
+.msg.me { flex-direction: row-reverse; }
+.bubble { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); border-radius: 14px; padding: 7px 10px; max-width: 78%; overflow-wrap: anywhere; }
+.msg.me .bubble { background: rgba(111, 230, 255, 0.12); border-color: rgba(111, 230, 255, 0.35); }
+.meta { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.meta b { color: var(--fg); }
+.rep { font-size: 11px; color: var(--muted); text-decoration: underline; padding: 0; }
+.chatform { display: flex; gap: 8px; }
+.chatform input { flex: 1; min-width: 0; }
+.chatform .cta { padding: 10px 14px; font-size: 13px; }
+input, select { font: inherit; color: var(--fg); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+input:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+select option { background: #0c1428; }
+.prof { display: grid; gap: 8px; }
+.prof label, .prof .lbl { font-size: 13px; color: var(--muted); font-weight: 600; }
+.avs { display: flex; gap: 8px; flex-wrap: wrap; }
+.avs button { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; }
+.avs button.on { border-color: #fff; box-shadow: 0 0 12px rgba(255, 255, 255, 0.5); }
+.giftdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.giftdays span { border-radius: 10px; padding: 6px 2px; border: 1px solid var(--line); font-size: 11px; color: var(--muted); display: grid; gap: 2px; }
+.giftdays span b { font-family: var(--display); font-size: 12px; color: var(--fg); }
+.giftdays span.done { background: rgba(63, 224, 197, 0.12); border-color: rgba(63, 224, 197, 0.5); }
+.giftdays span.now { background: var(--gold); border-color: var(--gold); color: var(--ink); } .giftdays span.now b { color: var(--ink); }
+.loader { display: grid; justify-items: center; gap: 14px; color: var(--muted); }
+.loader span { width: 46px; height: 46px; border-radius: 50%; border: 4px solid var(--line); border-top-color: var(--cyan); animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.ad-box img, .ad-box video { width: 100%; height: 100%; object-fit: contain; border-radius: 12px; display: block; background: #000; }
+.ad-box { padding: 0; overflow: hidden; }
+.ad-box:empty::before { content: ""; }
+.ad-title { margin: 0; font-weight: 600; min-height: 0; }
+.ad-title:empty { display: none; }
+.adlink { text-decoration: none; display: block; color: var(--fg); }
+.own-banner { display: block; width: 320px; max-width: 100%; height: 50px; border-radius: 10px; overflow: hidden; }
+.own-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@media (prefers-reduced-motion: reduce) { .loader span { animation-duration: 3s; } }
+/* v4 fixes: readable menu over the attract animation, no sideways overflow in the community panel */
+#menu { background: radial-gradient(ellipse 75% 55% at 50% 50%, rgba(5, 9, 19, 0.9), rgba(5, 9, 19, 0.55) 70%, rgba(5, 9, 19, 0.25)); }
+.menu-inner .tag, .menu-inner .best, .menu-inner .mlives { text-shadow: 0 1px 8px rgba(5, 9, 19, 0.95); }
+.commbody { grid-template-columns: minmax(0, 1fr); overflow-x: hidden; }
+.commbody > * { min-width: 0; }
 
 </style>
 </head>
@@ -187,8 +269,8 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 
 <div id="hud" hidden>
   <div class="hud-top">
-    <div class="lvl"><span class="lbl">NIVEAU</span><b id="hLvl">1</b></div>
-    <div class="score"><b id="hScore">0</b><span class="lbl-pts">POINTS</span><span id="hCombo" class="combo" hidden></span></div>
+    <div class="lvl"><span class="lbl" id="hLvlLbl">NIVEAU</span><b id="hLvl">1</b></div>
+    <div class="score"><b id="hScore">0</b><span class="lbl-pts">POINTS</span><div id="hLives" class="lives" aria-label="Vies"></div><span id="hCombo" class="combo" hidden></span></div>
     <div class="right">
       <div id="hNeed" class="need" aria-label="Balles dans la cible"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg><b id="hNeedTxt">0/2</b></div>
       <button id="bPause" class="icon" aria-label="Pause"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg></button>
@@ -199,6 +281,7 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
     <div class="actions">
       <button id="bHint" class="pill gold" hidden>Voir les foyers · pub</button>
       <button id="bSalvo" class="cta" hidden>LANCER LA SALVE</button>
+      <button id="bExitDemo" class="pill" hidden>Quitter la démo</button>
     </div>
     <div class="aimrow" id="aimRow" hidden>
       <button id="bLeft" class="icon fine" aria-label="Tourner à gauche"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
@@ -256,14 +339,21 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 
     <h1 class="word">ELLIPSO</h1>
     <p class="tag">Traverse un point ×2, dédouble ta balle, et vise la cible grâce aux foyers.</p>
+    <p class="announce" id="mAnnounce" hidden></p>
     <div class="best" id="mBest"></div>
+    <div class="mlives" id="mLives"></div>
     <button id="bPlay" class="cta big">JOUER<small id="bPlaySub">Niveau 1</small></button>
-    <button id="bRestart1" class="link" hidden>Recommencer au niveau 1</button>
+    <button id="bDemo" class="pill gold">Voir la démo : 1 balle devient 72</button>
+    <div class="row">
+      <button id="bComm" class="pill gold">Communauté</button>
+      <button id="bDefi" class="pill">Défier un ami</button>
+    </div>
     <div class="row">
       <button id="bSound" class="pill">Son : oui</button>
       <button id="bHow" class="pill">Comment jouer</button>
-      <button id="bInstall" class="pill gold" hidden>Installer le jeu</button>
+      <button id="bInstall" class="pill" hidden>Installer le jeu</button>
     </div>
+    <button id="bRestart1" class="link">Nouvelle partie</button>
   </div>
   <div class="banner" data-banner></div>
 </section>
@@ -274,10 +364,11 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
     <h2>Les règles</h2>
     <ol class="rules">
       <li><span>Glisse pour viser, relâche pour tirer.<small>Les flèches règlent l'angle au dixième de degré. La ligne devient verte quand le tir est correct.</small></span></li>
-      <li><span>Ta balle doit d'abord traverser un point ×2 : elle se divise en deux.<small>Si elle touche la clôture avant, elle tombe et le niveau recommence.</small></span></li>
+      <li><span>Ta balle doit d'abord traverser un point ×2 : elle se divise en deux.<small>Si elle touche la clôture avant, elle tombe et tu perds une vie.</small></span></li>
+      <li><span>Enchaîne les multiplicateurs : ×2, puis ×3, puis ×4…<small>La ligne verte prévoit toute la chaîne, et la visée aimantée t'aide à ne rien rater. Plus de balles dans la cible, plus d'étoiles.</small></span></li>
       <li><span>Chaque balle touche la clôture 3 fois au maximum.<small>Certains niveaux en autorisent moins.</small></span></li>
       <li><span>Ce qui part d'un foyer arrive à l'autre.<small>Un point ×2 posé sur un foyer envoie ses deux balles vers la cible.</small></span></li>
-      <li><span>Mets assez de balles dans la cible pour passer.<small>Raté ? Le niveau recommence. Tu peux le passer avec une pub ou avec tes points.</small></span></li>
+      <li><span>Tu as 5 vies, elles se rechargent toutes seules.<small>Plus de vies ? Attends, regarde une pub, ou utilise tes points.</small></span></li>
     </ol>
     <button id="bHowOk" class="cta">COMPRIS</button>
   </div>
@@ -291,7 +382,7 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
     <div class="stack">
       <button id="bResume" class="cta">REPRENDRE</button>
       <button id="bPauseSound" class="secondary">Son : oui</button>
-      <button id="bShare" class="secondary">Partager ma progression</button>
+      <button id="bPauseComm" class="secondary">Communauté</button>
       <button id="bQuit" class="secondary">Quitter vers le menu</button>
     </div>
   </div>
@@ -312,33 +403,641 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
       <div class="eyebrow" id="fEyebrow">NIVEAU 1 · ESSAI 1</div>
       <h2 id="fTitle">Raté !</h2>
       <p id="fText"></p>
+      <div class="lives big" id="fLives"></div>
+      <p class="timer" id="fTimer" hidden></p>
       <div class="stack">
         <button id="bRetry" class="cta">RÉESSAYER</button>
+        <button id="bLifeAd" class="secondary" hidden>+1 vie · regarder une pub</button>
+        <button id="bLifePts" class="secondary" hidden>Remplir les vies · 300 points</button>
         <button id="bSkipAd" class="secondary">Passer le niveau · regarder une pub</button>
         <button id="bSkipPts" class="secondary">Passer le niveau · 200 points</button>
+        <button id="bFailMenu" class="link">Menu</button>
       </div>
     </div>
     <div class="banner" data-banner></div>
   </div>
 </section>
 
+<section id="dover" class="screen modal" hidden>
+  <div class="stack">
+    <div class="card">
+      <div class="eyebrow">DÉFI TERMINÉ</div>
+      <h2 id="dTitle">Niveau 1</h2>
+      <p id="dText"></p>
+      <div id="dRes"></div>
+      <div class="stack">
+        <button id="bDefiShare" class="cta">DÉFIER D'AUTRES AMIS</button>
+        <button id="bDefiAgain" class="secondary">Rejouer ce défi</button>
+        <button id="bDefiMenu" class="secondary">Retour au menu</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="defiCard" class="screen modal" hidden>
+  <div class="card">
+    <div class="eyebrow">DÉFI</div>
+    <h2 id="dcTitle">Un ami te défie !</h2>
+    <p id="dcText">Mêmes niveaux pour tout le monde, 3 vies, pas de recharge. Va le plus loin possible.</p>
+    <div id="dcRes"></div>
+    <div class="stack">
+      <button id="bDefiGo" class="cta">RELEVER LE DÉFI</button>
+      <button id="bDefiLater" class="secondary">Plus tard</button>
+    </div>
+  </div>
+</section>
+
+<section id="gift" class="screen modal" hidden>
+  <div class="card">
+    <div class="eyebrow">CADEAU DU JOUR</div>
+    <h2 id="gTitle">Jour 1</h2>
+    <div class="giftdays" id="gDays"></div>
+    <p id="gText"></p>
+    <button id="bGift" class="cta">RÉCUPÉRER</button>
+  </div>
+</section>
+
+<section id="comm" class="screen modal" hidden>
+  <div class="card wide">
+    <div class="commhead">
+      <h2>Communauté</h2>
+      <button id="bCommClose" class="icon" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button data-t="rank">Classement</button><button data-t="defi">Défis</button><button data-t="chat">Chat</button><button data-t="prof">Profil</button>
+    </div>
+    <div id="commBody" class="commbody"></div>
+  </div>
+</section>
+
 <section id="ad" class="screen modal" hidden>
   <div class="card">
     <div class="ad-label">PUBLICITÉ</div>
-    <div class="ad-box" id="adBox">Démo : une vraie publicité s'affichera ici quand ton compte AdSense sera configuré.</div>
+    <div class="ad-box" id="adBox"></div>
+    <p class="ad-title" id="adTitle"></p>
+    <a id="bAdLink" class="secondary adlink" target="_blank" rel="noopener" hidden>En savoir plus</a>
     <div class="bar"><i id="adBar"></i></div>
-    <button id="bAdClose" class="cta" disabled>Patiente… <span id="adSec">3</span></button>
+    <button id="bAdClose" class="cta" disabled>Patiente…</button>
   </div>
+</section>
+
+<section id="loading" class="screen modal" hidden>
+  <div class="loader"><span></span><p>Préparation du niveau…</p></div>
 </section>
 
 <div id="toast" class="toast" role="status" hidden></div>
 
 <script>
+// ===== Ellipso shared helpers (used by the game and the community panel) =====
+var CORE = (function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const fmt = (v) => Math.round(v || 0).toLocaleString("fr-FR");
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("ellipso." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("ellipso." + k, JSON.stringify(v)); } catch (e) {} },
+  };
+  let toastT = 0;
+  function toast(msg) { const t = $("toast"); if (!t) return; t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2600); }
+  const today = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+  function isoWeek(d) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const day = d.getUTCDay() || 7; d.setUTCDate(d.getUTCDate() + 4 - day);
+    const y0 = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return d.getUTCFullYear() + "-S" + String(Math.ceil(((d - y0) / 864e5 + 1) / 7)).padStart(2, "0");
+  }
+  const AVATARS = ["#6fe6ff", "#ff4f9a", "#ffd25a", "#8b6bff", "#3fe0c5", "#ff8a3d", "#9dff6a", "#ff6b6b"];
+  const COUNTRIES = [
+    ["CD", "RD Congo"], ["CG", "Congo-Brazzaville"], ["FR", "France"], ["BE", "Belgique"], ["CA", "Canada"], ["CH", "Suisse"],
+    ["CM", "Cameroun"], ["CI", "Côte d'Ivoire"], ["SN", "Sénégal"], ["GA", "Gabon"], ["AO", "Angola"], ["RW", "Rwanda"],
+    ["BI", "Burundi"], ["BJ", "Bénin"], ["BF", "Burkina Faso"], ["ML", "Mali"], ["NE", "Niger"], ["TG", "Togo"], ["GN", "Guinée"],
+    ["TD", "Tchad"], ["CF", "Centrafrique"], ["MG", "Madagascar"], ["MA", "Maroc"], ["DZ", "Algérie"], ["TN", "Tunisie"],
+    ["HT", "Haïti"], ["NG", "Nigeria"], ["GH", "Ghana"], ["KE", "Kenya"], ["TZ", "Tanzanie"], ["UG", "Ouganda"], ["ZA", "Afrique du Sud"],
+    ["ZM", "Zambie"], ["ET", "Éthiopie"], ["EG", "Égypte"], ["US", "États-Unis"], ["GB", "Royaume-Uni"], ["DE", "Allemagne"],
+    ["ES", "Espagne"], ["IT", "Italie"], ["PT", "Portugal"], ["NL", "Pays-Bas"], ["BR", "Brésil"], ["MX", "Mexique"], ["IN", "Inde"],
+    ["CN", "Chine"], ["JP", "Japon"], ["TR", "Turquie"], ["LB", "Liban"], ["AE", "Émirats arabes unis"], ["XX", "Autre pays"],
+  ];
+  const countryName = (c) => (COUNTRIES.find((x) => x[0] === c) || [c, c || "?"])[1];
+  const flag = (c) => (!c || c === "XX" || c.length !== 2 ? "" : String.fromCodePoint(...[...c.toUpperCase()].map((ch) => 0x1f1a5 + ch.charCodeAt(0))));
+  function guessCountry() {
+    const langs = navigator.languages || [navigator.language || ""];
+    for (const l of langs) { const m = /[-_]([A-Za-z]{2})$/.exec(l || ""); if (m && COUNTRIES.some((c) => c[0] === m[1].toUpperCase())) return m[1].toUpperCase(); }
+    return "CD";
+  }
+  function platform() {
+    const ua = navigator.userAgent || "";
+    return /android/i.test(ua) ? "android" : /iphone|ipad|ipod/i.test(ua) ? "ios" : /mobile/i.test(ua) ? "mobile" : "ordinateur";
+  }
+  const installed = () => { try { return matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || navigator.standalone === true; } catch (e) { return false; } };
+  // light profanity filter for the public chat (French / English); the admin can still delete messages
+  const BAD = ["merde", "putain", "pute", "connard", "connasse", "salope", "encule", "enculé", "nique", "batard", "bâtard", "fdp", "ntm", "fuck", "shit", "bitch", "asshole", "pussy", "dick"];
+  function clean(text) {
+    let t = String(text || "").replace(/\s+/g, " ").trim().slice(0, 200);
+    for (const w of BAD) t = t.replace(new RegExp("\\b" + w + "\\b", "gi"), (m) => m[0] + "*".repeat(m.length - 1));
+    return t;
+  }
+  const ago = (ms) => {
+    if (!ms) return "jamais";
+    const s = Math.max(0, (Date.now() - ms) / 1000);
+    if (s < 60) return "à l'instant"; if (s < 3600) return "il y a " + Math.floor(s / 60) + " min";
+    if (s < 86400) return "il y a " + Math.floor(s / 3600) + " h"; return "il y a " + Math.floor(s / 86400) + " j";
+  };
+  return { $, fmt, esc, store, toast, today, isoWeek, AVATARS, COUNTRIES, countryName, flag, guessCountry, platform, installed, clean, ago };
+})();
+
+</script>
+<script>
+// ===== Ellipso online layer: Firebase (anonymous players) with a local fallback =====
+var NET = (function () {
+  "use strict";
+  const C = CORE, store = C.store;
+  const FB = window.ELLIPSO_FIREBASE || {};
+  const DEFAULTS = {
+    livesMax: 5, lifeRegenMin: 15, skipCostBase: 150, skipCostPerLevel: 15, dailyGift: true,
+    interstitialEvery: 4, ownAdsShare: 0.6, rewardedEnabled: true,
+    useGoogle: true, adClient: "", bannerSlot: "", adTest: true,
+    chatEnabled: true, announcement: "",
+  };
+  const st = {
+    enabled: !!FB.apiKey, online: false, uid: null, banned: false, muted: false,
+    config: Object.assign({}, DEFAULTS, store.get("cfg", {})), ads: store.get("ads", []),
+    profile: store.get("profile", null),
+  };
+  const subs = {};
+  const on = (ev, cb) => { (subs[ev] = subs[ev] || []).push(cb); };
+  const emit = (ev, v) => (subs[ev] || []).forEach((cb) => { try { cb(v); } catch (e) { console.error(e); } });
+  let db = null, auth = null, FV = null, TS = null;
+
+  if (!st.profile) {
+    st.profile = { pseudo: "Joueur" + Math.floor(1000 + Math.random() * 9000), country: C.guessCountry(), avatar: Math.floor(Math.random() * 8), custom: false };
+    store.set("profile", st.profile);
+  }
+
+  function loadScript(src) {
+    return new Promise((ok, ko) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = ko; document.head.appendChild(s); });
+  }
+  async function loadSdk() {
+    if (window.firebase && window.firebase.firestore) return;
+    const v = "vendor/";
+    for (const f of ["firebase-app-compat.js", "firebase-auth-compat.js", "firebase-firestore-compat.js"]) await loadScript(v + f);
+  }
+
+  async function init() {
+    if (!st.enabled) { emit("ready", st); return; }
+    try {
+      await loadSdk();
+      const app = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(FB);
+      auth = app.auth(); db = app.firestore();
+      FV = firebase.firestore.FieldValue; TS = firebase.firestore.Timestamp;
+      auth.onAuthStateChanged(async (u) => {
+        if (!u) { try { await auth.signInAnonymously(); } catch (e) { console.warn("auth", e); emit("ready", st); } return; }
+        st.uid = u.uid; st.online = true;
+        try { await ensureUser(); } catch (e) { console.warn("user", e); }
+        listenConfig(); listenAds(); presence();
+        emit("ready", st);
+      });
+    } catch (e) { console.warn("Firebase indisponible, mode local", e); st.enabled = false; emit("ready", st); }
+  }
+
+  // ---------- profile / progress ----------
+  let progress = Object.assign({ level: 1, bestLevel: 1, points: 0, cleared: 0, fails: 0 }, store.get("progress", {}));
+  async function ensureUser() {
+    const ref = db.collection("users").doc(st.uid), snap = await ref.get();
+    const base = { pseudo: st.profile.pseudo, country: st.profile.country, avatar: st.profile.avatar, platform: C.platform(), installed: C.installed(), lastSeen: FV.serverTimestamp(), online: true, lang: navigator.language || "" };
+    if (!snap.exists) {
+      await ref.set(Object.assign(base, { level: progress.level, bestLevel: progress.bestLevel, points: progress.points, cleared: progress.cleared, fails: progress.fails, banned: false, muted: false, createdAt: FV.serverTimestamp() }));
+      stat("newUsers"); statGlobal("users");
+    } else {
+      const d = snap.data();
+      st.banned = !!d.banned; st.muted = !!d.muted;
+      if (st.profile.custom === false && d.pseudo) { st.profile = { pseudo: d.pseudo, country: d.country, avatar: d.avatar || 0, custom: true }; store.set("profile", st.profile); emit("profile", st.profile); }
+      await ref.update(base);
+    }
+    ref.onSnapshot((s) => { if (!s.exists) return; const d = s.data(); const b = !!d.banned, m = !!d.muted; if (b !== st.banned || m !== st.muted) { st.banned = b; st.muted = m; emit("status", st); } });
+    stat("sessions");
+  }
+  let presTimer = 0;
+  function presence() {
+    const beat = () => { if (!document.hidden && st.uid) db.collection("users").doc(st.uid).update({ lastSeen: FV.serverTimestamp(), online: true }).catch(() => {}); };
+    clearInterval(presTimer); presTimer = setInterval(beat, 60000);
+    document.addEventListener("visibilitychange", () => {
+      if (!st.uid) return;
+      if (document.hidden) db.collection("users").doc(st.uid).update({ online: false }).catch(() => {}); else beat();
+    });
+  }
+  let saveT = 0, pending = {};
+  function saveProgress(p) {
+    progress = Object.assign(progress, p); store.set("progress", progress);
+    if (!st.online) return;
+    Object.assign(pending, p);
+    clearTimeout(saveT);
+    saveT = setTimeout(() => { const d = pending; pending = {}; db.collection("users").doc(st.uid).update(d).catch((e) => console.warn("save", e)); }, 1500);
+  }
+  function levelCleared(pts) {
+    if (!st.online) return;
+    stat("levels");
+    const wk = C.isoWeek(new Date());
+    db.collection("weeks").doc(wk).collection("scores").doc(st.uid).set({ pseudo: st.profile.pseudo, country: st.profile.country, avatar: st.profile.avatar, points: FV.increment(pts), cleared: FV.increment(1), at: FV.serverTimestamp() }, { merge: true }).catch(() => {});
+  }
+  async function updateProfile(p) {
+    st.profile = Object.assign({}, st.profile, p, { custom: true }); store.set("profile", st.profile);
+    emit("profile", st.profile);
+    if (st.online) await db.collection("users").doc(st.uid).update({ pseudo: st.profile.pseudo, country: st.profile.country, avatar: st.profile.avatar });
+  }
+
+  // ---------- stats (batched increments) ----------
+  let statBuf = {}, statT = 0, globalBuf = {};
+  function stat(k, n) {
+    if (!st.online) return;
+    statBuf[k] = (statBuf[k] || 0) + (n || 1);
+    clearTimeout(statT); statT = setTimeout(flushStats, 8000);
+  }
+  function statGlobal(k) { globalBuf[k] = (globalBuf[k] || 0) + 1; clearTimeout(statT); statT = setTimeout(flushStats, 3000); }
+  function flushStats() {
+    if (!st.online) return;
+    const inc = (b) => { const o = {}; for (const k in b) o[k] = FV.increment(Math.min(50, b[k])); return o; };
+    if (Object.keys(statBuf).length) db.collection("stats").doc(C.today()).set(inc(statBuf), { merge: true }).catch(() => {});
+    if (Object.keys(globalBuf).length) db.collection("stats").doc("global").set(inc(globalBuf), { merge: true }).catch(() => {});
+    statBuf = {}; globalBuf = {};
+  }
+  window.addEventListener("pagehide", flushStats);
+
+  // ---------- remote config & ads ----------
+  function listenConfig() {
+    db.collection("config").doc("app").onSnapshot((s) => {
+      const d = s.exists ? s.data() : {};
+      st.config = Object.assign({}, DEFAULTS, d); store.set("cfg", d); emit("config", st.config);
+    }, () => {});
+  }
+  function listenAds() {
+    db.collection("ads").where("active", "==", true).onSnapshot((q) => {
+      st.ads = q.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+      store.set("ads", st.ads); emit("ads", st.ads);
+    }, () => {});
+  }
+  function adEvent(id, kind) {
+    stat(kind === "clicks" ? "adClicks" : "adsOwn");
+    if (st.online && id) db.collection("ads").doc(id).update({ [kind]: FV.increment(1) }).catch(() => {});
+  }
+
+  // ---------- leaderboards ----------
+  const asRow = (d, extra) => Object.assign({ id: d.id }, d.data(), extra || {});
+  async function leaderboard(kind) {
+    if (!st.online) return { rows: [{ id: "me", pseudo: st.profile.pseudo, country: st.profile.country, avatar: st.profile.avatar, bestLevel: progress.bestLevel, points: progress.points, me: true }], local: true };
+    let rows = [];
+    if (kind === "week") {
+      const q = await db.collection("weeks").doc(C.isoWeek(new Date())).collection("scores").orderBy("points", "desc").limit(50).get();
+      rows = q.docs.map((d) => asRow(d));
+    } else if (kind === "country") {
+      try {
+        const q = await db.collection("users").where("country", "==", st.profile.country).orderBy("bestLevel", "desc").limit(50).get();
+        rows = q.docs.map((d) => asRow(d));
+      } catch (e) { // composite index missing: fall back to a client-side filter
+        const q = await db.collection("users").orderBy("bestLevel", "desc").limit(300).get();
+        rows = q.docs.map((d) => asRow(d)).filter((r) => r.country === st.profile.country).slice(0, 50);
+      }
+    } else {
+      const q = await db.collection("users").orderBy("bestLevel", "desc").limit(50).get();
+      rows = q.docs.map((d) => asRow(d));
+    }
+    rows = rows.filter((r) => !r.banned);
+    rows.forEach((r) => { if (r.id === st.uid) r.me = true; });
+    return { rows, local: false };
+  }
+
+  // ---------- challenges ----------
+  async function createChallenge(seed) {
+    if (!st.online) return { id: "L" + seed.toString(36), seed, local: true };
+    const ref = await db.collection("challenges").add({ seed, by: st.uid, byPseudo: st.profile.pseudo, byCountry: st.profile.country, plays: 0, createdAt: FV.serverTimestamp() });
+    stat("challenges");
+    return { id: ref.id, seed };
+  }
+  async function getChallenge(id, seedHint) {
+    if (!st.online || id[0] === "L") return { id, seed: seedHint || parseInt(id.slice(1), 36) || 1, byPseudo: "", local: true };
+    const s = await db.collection("challenges").doc(id).get();
+    if (!s.exists) return null;
+    return Object.assign({ id }, s.data());
+  }
+  async function challengeResults(id) {
+    if (!st.online || id[0] === "L") return [];
+    const q = await db.collection("challenges").doc(id).collection("results").orderBy("level", "desc").limit(50).get();
+    return q.docs.map((d) => asRow(d, { me: d.id === st.uid }));
+  }
+  async function postChallengeResult(id, level, points) {
+    if (!st.online || id[0] === "L") return;
+    const ref = db.collection("challenges").doc(id).collection("results").doc(st.uid);
+    const prev = await ref.get();
+    if (prev.exists && (prev.data().level > level || (prev.data().level === level && prev.data().points >= points))) return;
+    await ref.set({ pseudo: st.profile.pseudo, country: st.profile.country, avatar: st.profile.avatar, level, points, at: FV.serverTimestamp() });
+    if (!prev.exists) db.collection("challenges").doc(id).update({ plays: FV.increment(1) }).catch(() => {});
+  }
+
+  // ---------- chat ----------
+  function listenChat(cb) {
+    if (!st.online) { cb(null); return () => {}; }
+    return db.collection("chat").orderBy("at", "desc").limit(60).onSnapshot((q) => {
+      cb(q.docs.map((d) => { const x = d.data(); return Object.assign({ id: d.id }, x, { ms: x.at && x.at.toMillis ? x.at.toMillis() : Date.now(), me: x.uid === st.uid }); }).reverse());
+    }, (e) => { console.warn("chat", e); cb(null); });
+  }
+  let lastChat = 0;
+  async function sendChat(text) {
+    const t = C.clean(text);
+    if (!t) return "vide";
+    if (!st.online) return "horsligne";
+    if (st.banned || st.muted) return "muet";
+    if (Date.now() - lastChat < 4000) return "vite";
+    lastChat = Date.now();
+    await db.collection("chat").add({ uid: st.uid, pseudo: st.profile.pseudo, country: st.profile.country, avatar: st.profile.avatar, text: t, at: FV.serverTimestamp() });
+    stat("messages");
+    return "ok";
+  }
+  async function report(msg) {
+    if (!st.online) return;
+    await db.collection("reports").add({ msgId: msg.id, text: msg.text, reportedUid: msg.uid, reportedPseudo: msg.pseudo, by: st.uid, at: FV.serverTimestamp() });
+  }
+
+  return { st, on, init, saveProgress, levelCleared, updateProfile, stat, adEvent, leaderboard, createChallenge, getChallenge, challengeResults, postChallengeResult, listenChat, sendChat, report, DEFAULTS };
+})();
+
+</script>
+<script>
+// ===== Ellipso ads: house ads (image / video set in the admin) + Google H5 Games Ads =====
+var ADS = (function () {
+  "use strict";
+  const C = CORE, $ = C.$;
+  let hooks = { pause() {}, resume() {} };
+  let googleReady = false, showing = false;
+  const cfg = () => NET.st.config;
+  const googleOn = () => cfg().useGoogle !== false && !!cfg().adClient && typeof window.adBreak === "function";
+  const demoMode = () => !NET.st.enabled && !cfg().adClient;
+  function pick(placement) {
+    const list = (NET.st.ads || []).filter((a) => a.active !== false && a.url && (a.placements || []).includes(placement));
+    if (!list.length) return null;
+    let tot = list.reduce((s, a) => s + (a.weight || 1), 0), r = Math.random() * tot;
+    for (const a of list) { r -= a.weight || 1; if (r <= 0) return a; }
+    return list[0];
+  }
+  function initGoogle() {
+    if (googleReady || !googleOn()) return;
+    googleReady = true;
+    try { window.adConfig({ preloadAdBreaks: "on", sound: "on" }); } catch (e) {}
+  }
+
+  // full-screen overlay for house ads and the demo
+  function overlay(ad, opts) {
+    const ov = $("ad"), box = $("adBox"), bar = $("adBar"), btn = $("bAdClose"), link = $("bAdLink"), title = $("adTitle");
+    showing = true; hooks.pause();
+    ov.hidden = false; bar.style.width = "0%"; btn.disabled = true;
+    const wait = Math.max(2, Math.min(30, (ad && ad.skipAfter) || (opts.reward ? 5 : 4)));
+    title.textContent = ad ? ad.title || "" : "";
+    link.hidden = !(ad && ad.link);
+    if (ad && ad.link) { link.href = ad.link; link.onclick = () => NET.adEvent(ad.id, "clicks"); }
+    let video = null;
+    if (!ad) box.innerHTML = "Démo : une vraie publicité s'affichera ici quand tu ajouteras tes pubs dans l'espace admin ou ton compte AdSense.";
+    else if (ad.type === "video") {
+      box.innerHTML = ""; video = document.createElement("video");
+      video.src = ad.url; video.playsInline = true; video.autoplay = true; video.muted = false; video.setAttribute("playsinline", "");
+      box.appendChild(video);
+      video.play().catch(() => { video.muted = true; video.play().catch(() => {}); });
+    } else { box.innerHTML = ""; const img = new Image(); img.alt = ad.title || "Publicité"; img.src = ad.url; box.appendChild(img); }
+    if (ad) NET.adEvent(ad.id, "impressions"); else NET.stat("adsDemo");
+    const t0 = performance.now();
+    let done = false;
+    const total = () => (video && isFinite(video.duration) && opts.reward ? Math.min(30, video.duration) : wait) * 1000;
+    const tick = () => {
+      if (ov.hidden) return;
+      const p = Math.min(1, (performance.now() - t0) / total());
+      bar.style.width = (p * 100).toFixed(1) + "%";
+      const left = Math.ceil((total() - (performance.now() - t0)) / 1000);
+      if (p < 1) { btn.textContent = (opts.reward ? "Récompense dans " : "Passer dans ") + Math.max(1, left) + " s"; requestAnimationFrame(tick); }
+      else { done = true; btn.disabled = false; btn.textContent = opts.reward ? "RÉCUPÉRER LA RÉCOMPENSE" : "CONTINUER"; }
+    };
+    tick();
+    btn.onclick = () => {
+      if (!done) return;
+      ov.hidden = true; showing = false; if (video) { video.pause(); video.removeAttribute("src"); video.load(); }
+      box.innerHTML = ""; hooks.resume(); opts.end(true);
+    };
+  }
+
+  function interstitial(name, done) {
+    const c = cfg(), own = pick("interstitial");
+    if (own && (!googleOn() || Math.random() < (c.ownAdsShare == null ? 0.6 : c.ownAdsShare))) return overlay(own, { reward: false, end: () => done() });
+    if (googleOn()) {
+      initGoogle();
+      let called = false; const fin = () => { if (!called) { called = true; showing = false; hooks.resume(); NET.stat("adsGoogle"); done(); } };
+      try { window.adBreak({ type: "next", name, beforeAd: () => { showing = true; hooks.pause(); }, afterAd: () => hooks.resume(), adBreakDone: fin }); } catch (e) { fin(); }
+      setTimeout(() => { if (!called && !showing) fin(); }, 4000);
+      return;
+    }
+    done();
+  }
+  function rewarded(name, onReward, onCancel) {
+    const c = cfg();
+    if (c.rewardedEnabled === false) { C.toast("Les pubs récompensées sont désactivées : c'est offert !"); return onReward(); }
+    const own = pick("reward");
+    if (own && (!googleOn() || Math.random() < (c.ownAdsShare == null ? 0.6 : c.ownAdsShare))) return overlay(own, { reward: true, end: () => onReward() });
+    if (googleOn()) {
+      initGoogle();
+      let shown = false, rewardedOk = false;
+      try {
+        window.adBreak({
+          type: "reward", name,
+          beforeAd: () => { showing = true; hooks.pause(); }, afterAd: () => { showing = false; hooks.resume(); },
+          beforeReward: (showAdFn) => { shown = true; showAdFn(); },
+          adDismissed: () => {}, adViewed: () => { rewardedOk = true; },
+          adBreakDone: () => {
+            if (rewardedOk) { NET.stat("adsGoogle"); onReward(); }
+            else if (!shown) { if (own) overlay(own, { reward: true, end: () => onReward() }); else { C.toast("Pas de pub disponible pour l'instant : c'est offert !"); onReward(); } }
+            else { C.toast("Regarde la pub jusqu'au bout pour la récompense."); onCancel && onCancel(); }
+          },
+        });
+      } catch (e) { onReward(); }
+      return;
+    }
+    if (own) return overlay(own, { reward: true, end: () => onReward() });
+    overlay(null, { reward: true, end: () => onReward() }); // demo / no ad configured
+  }
+  function banner(el) {
+    if (!el) return;
+    const own = pick("banner"), c = cfg();
+    if (own) {
+      el.innerHTML = '<a class="own-banner" target="_blank" rel="noopener"><img alt=""></a>';
+      const a = el.firstChild; a.querySelector("img").src = own.url; a.querySelector("img").alt = own.title || "Publicité";
+      if (own.link) a.href = own.link; a.onclick = () => NET.adEvent(own.id, "clicks");
+      NET.adEvent(own.id, "impressions"); return;
+    }
+    if (googleOn() && c.bannerSlot) {
+      if (el.dataset.g) return; el.dataset.g = "1";
+      el.innerHTML = '<ins class="adsbygoogle" style="display:inline-block;width:320px;height:50px"></ins>';
+      const ins = el.firstChild; ins.setAttribute("data-ad-client", c.adClient); ins.setAttribute("data-ad-slot", c.bannerSlot);
+      try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+      return;
+    }
+    el.innerHTML = demoMode() ? '<div class="demo">ESPACE PUBLICITAIRE · 320 × 50</div>' : "";
+  }
+  return { interstitial, rewarded, banner, setHooks: (h) => (hooks = h), isShowing: () => showing };
+})();
+
+</script>
+<script>
+// ===== Ellipso community panel: profile, leaderboards, challenges, chat =====
+var COMMUNITY = (function () {
+  "use strict";
+  const C = CORE, $ = C.$, esc = C.esc;
+  let hooks = { onPlayChallenge() {}, onOpen() {}, onClose() {} };
+  let tab = "rank", rankKind = "all", unsubChat = null;
+  const avatar = (p) => '<span class="av" style="background:' + C.AVATARS[(p && p.avatar) || 0] + '">' + esc(((p && p.pseudo) || "?").slice(0, 1).toUpperCase()) + "</span>";
+  const who = (p) => avatar(p) + '<span class="who"><b>' + esc(p.pseudo || "?") + "</b><small>" + C.flag(p.country) + " " + esc(C.countryName(p.country)) + "</small></span>";
+
+  function open(t) {
+    hooks.onOpen();
+    $("comm").hidden = false;
+    show(t || tab);
+  }
+  function close() {
+    $("comm").hidden = true;
+    if (unsubChat) { unsubChat(); unsubChat = null; }
+    hooks.onClose();
+  }
+  function show(t) {
+    tab = t;
+    document.querySelectorAll("#comm .tabs button").forEach((b) => b.classList.toggle("on", b.dataset.t === t));
+    if (unsubChat && t !== "chat") { unsubChat(); unsubChat = null; }
+    const body = $("commBody");
+    body.innerHTML = '<p class="muted">Chargement…</p>';
+    if (t === "rank") renderRank();
+    else if (t === "defi") renderDefis();
+    else if (t === "chat") renderChat();
+    else renderProfile();
+  }
+  const offlineNote = () => (NET.st.enabled ? (NET.st.online ? "" : '<p class="note">Connexion au serveur en cours… Vérifie ta connexion internet.</p>')
+    : '<p class="note">Mode hors ligne : le classement mondial, le chat et les défis en ligne s\'activent quand le serveur du jeu est configuré.</p>');
+
+  // ---------- leaderboards ----------
+  async function renderRank() {
+    const body = $("commBody");
+    const head = '<div class="seg">' + [["all", "Monde"], ["week", "Cette semaine"], ["country", C.flag(NET.st.profile.country) + " Mon pays"]]
+      .map(([k, l]) => '<button data-k="' + k + '" class="' + (k === rankKind ? "on" : "") + '">' + l + "</button>").join("") + "</div>";
+    body.innerHTML = head + offlineNote() + '<ol class="board" id="board"><li class="muted">Chargement…</li></ol>';
+    body.querySelectorAll(".seg button").forEach((b) => (b.onclick = () => { rankKind = b.dataset.k; renderRank(); }));
+    try {
+      const { rows } = await NET.leaderboard(rankKind);
+      const ol = $("board"); if (!ol) return;
+      if (!rows.length) { ol.innerHTML = '<li class="muted">Personne pour l\'instant. Sois le premier !</li>'; return; }
+      ol.innerHTML = rows.map((r, i) => '<li class="' + (r.me ? "me" : "") + '"><span class="rk">' + (i + 1) + "</span>" + who(r) +
+        '<span class="sc">' + (rankKind === "week" ? C.fmt(r.points) + " pts<small>" + (r.cleared || 0) + " niveaux</small>" : "Niv. " + (r.bestLevel || 1) + "<small>" + C.fmt(r.points) + " pts</small>") + "</span></li>").join("");
+    } catch (e) { const ol = $("board"); if (ol) ol.innerHTML = '<li class="muted">Impossible de charger le classement. Réessaie plus tard.</li>'; console.warn(e); }
+  }
+
+  // ---------- challenges ----------
+  const myDefis = () => C.store.get("defis", []);
+  const linkFor = (d) => { const base = /^https?:/.test(location.href) ? location.href.split(/[?#]/)[0] : "https://shekinabanza.github.io/-Ellipso/"; return base + "?defi=" + encodeURIComponent(d.id) + "&s=" + d.seed; };
+  async function share(d) {
+    const url = linkFor(d), text = "Je te défie sur Ellipso ! Mêmes niveaux, 3 vies : qui ira le plus loin ?";
+    try { if (navigator.share) { await navigator.share({ title: "Défi Ellipso", text, url }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(text + " " + url); C.toast("Lien du défi copié : envoie-le à tes amis !"); } catch (e) { C.toast(url); }
+  }
+  function renderDefis() {
+    const body = $("commBody"), list = myDefis();
+    body.innerHTML = '<div class="hero-defi"><h3>Défie tes amis</h3><p>Crée un défi : tes amis jouent exactement les mêmes niveaux que toi, avec 3 vies. Le classement du défi montre qui est allé le plus loin.</p>' +
+      '<button class="cta" id="bNewDefi">CRÉER UN DÉFI</button></div>' + offlineNote() +
+      '<h4>Mes défis</h4><ul class="defis">' + (list.length ? list.map((d, i) => '<li><div><b>Défi ' + esc(d.id.slice(0, 6).toUpperCase()) + "</b><small>" + (d.mine ? "créé par toi" : "de " + esc(d.by || "un ami")) + (d.best ? " · ton record : niveau " + d.best : "") + "</small></div>" +
+        '<div class="row"><button class="pill" data-a="play" data-i="' + i + '">Jouer</button><button class="pill" data-a="res" data-i="' + i + '">Résultats</button><button class="pill" data-a="share" data-i="' + i + '">Partager</button></div></li>').join("") : '<li class="muted">Aucun défi pour l\'instant.</li>') + "</ul>" +
+      '<div id="defiRes"></div>';
+    $("bNewDefi").onclick = async () => {
+      const b = $("bNewDefi"); b.disabled = true;
+      try {
+        const seed = (crypto.getRandomValues(new Uint32Array(1))[0] >>> 0) || 7;
+        const d = await NET.createChallenge(seed);
+        const all = myDefis(); all.unshift({ id: d.id, seed, mine: true, at: Date.now() }); C.store.set("defis", all.slice(0, 30));
+        renderDefis(); share({ id: d.id, seed });
+      } catch (e) { C.toast("Impossible de créer le défi. Vérifie ta connexion."); b.disabled = false; }
+    };
+    body.querySelectorAll(".defis button").forEach((b) => (b.onclick = () => {
+      const d = myDefis()[+b.dataset.i];
+      if (b.dataset.a === "play") { close(); hooks.onPlayChallenge({ id: d.id, seed: d.seed, byPseudo: d.mine ? "toi" : d.by }); }
+      else if (b.dataset.a === "share") share(d);
+      else showResults(d.id, $("defiRes"));
+    }));
+  }
+  async function showResults(id, el) {
+    el = el || $("commBody");
+    el.innerHTML = '<p class="muted">Chargement des résultats…</p>';
+    try {
+      const rows = await NET.challengeResults(id);
+      el.innerHTML = "<h4>Classement du défi " + esc(id.slice(0, 6).toUpperCase()) + '</h4><ol class="board">' + (rows.length ? rows.map((r, i) => '<li class="' + (r.me ? "me" : "") + '"><span class="rk">' + (i + 1) + "</span>" + who(r) + '<span class="sc">Niv. ' + r.level + "<small>" + C.fmt(r.points) + " pts</small></span></li>").join("")
+        : '<li class="muted">' + (id[0] === "L" ? "Défi hors ligne : les résultats ne sont pas partagés." : "Personne n'a encore joué ce défi.") + "</li>") + "</ol>";
+    } catch (e) { el.innerHTML = '<p class="muted">Résultats indisponibles pour l\'instant.</p>'; }
+  }
+  function rememberDefi(ch, best) {
+    const all = myDefis(), i = all.findIndex((d) => d.id === ch.id);
+    const d = i >= 0 ? all[i] : { id: ch.id, seed: ch.seed, mine: false, by: ch.byPseudo, at: Date.now() };
+    if (best) d.best = Math.max(d.best || 0, best);
+    if (i >= 0) all[i] = d; else all.unshift(d);
+    C.store.set("defis", all.slice(0, 30));
+  }
+
+  // ---------- chat ----------
+  function renderChat() {
+    const body = $("commBody"), cfg = NET.st.config;
+    if (cfg.chatEnabled === false) { body.innerHTML = '<p class="note">Le chat est fermé pour le moment.</p>'; return; }
+    if (!NET.st.online) { body.innerHTML = offlineNote() || '<p class="note">Chat indisponible.</p>'; return; }
+    body.innerHTML = '<div class="chat" id="chatList"><p class="muted">Chargement…</p></div>' +
+      (NET.st.banned || NET.st.muted ? '<p class="note">Tu ne peux plus écrire dans le chat (décision de la modération).</p>'
+        : '<form class="chatform" id="chatForm"><input id="chatIn" maxlength="200" autocomplete="off" placeholder="Écris un message…" aria-label="Message"><button class="cta" type="submit">ENVOYER</button></form><p class="muted small">Reste respectueux : les messages sont modérés.</p>');
+    unsubChat = NET.listenChat((msgs) => {
+      const el = $("chatList"); if (!el) return;
+      if (!msgs) { el.innerHTML = '<p class="muted">Chat indisponible.</p>'; return; }
+      el.innerHTML = msgs.length ? msgs.map((m) => '<div class="msg' + (m.me ? " me" : "") + '">' + avatar(m) + '<div class="bubble"><div class="meta"><b>' + esc(m.pseudo) + "</b> " + C.flag(m.country) + " <small>" + C.ago(m.ms) + "</small>" +
+        (m.me ? "" : ' <button class="rep" data-id="' + esc(m.id) + '" aria-label="Signaler">signaler</button>') + "</div>" + esc(m.text) + "</div></div>").join("") : '<p class="muted">Aucun message. Dis bonjour !</p>';
+      el.scrollTop = el.scrollHeight;
+      el.querySelectorAll(".rep").forEach((b) => (b.onclick = async () => { const m = msgs.find((x) => x.id === b.dataset.id); if (m) { await NET.report(m).catch(() => {}); C.toast("Message signalé à la modération. Merci !"); b.remove(); } }));
+    });
+    const f = $("chatForm");
+    if (f) f.onsubmit = async (e) => {
+      e.preventDefault();
+      const inp = $("chatIn"), r = await NET.sendChat(inp.value).catch(() => "err");
+      if (r === "ok") inp.value = "";
+      else C.toast({ vite: "Doucement : attends quelques secondes.", muet: "Tu ne peux plus écrire dans le chat.", vide: "Écris un message d'abord.", horsligne: "Pas de connexion." }[r] || "Message non envoyé.");
+    };
+  }
+
+  // ---------- profile ----------
+  function renderProfile() {
+    const p = NET.st.profile, pr = C.store.get("progress", {}), body = $("commBody");
+    body.innerHTML = '<form id="profForm" class="prof">' +
+      '<label for="pPseudo">Pseudo</label><input id="pPseudo" maxlength="16" minlength="2" required value="' + esc(p.pseudo) + '">' +
+      '<label for="pCountry">Pays</label><select id="pCountry">' + C.COUNTRIES.map(([c, n]) => '<option value="' + c + '"' + (c === p.country ? " selected" : "") + ">" + C.flag(c) + " " + esc(n) + "</option>").join("") + "</select>" +
+      '<span class="lbl">Couleur</span><div class="avs">' + C.AVATARS.map((col, i) => '<button type="button" data-i="' + i + '" class="' + (i === p.avatar ? "on" : "") + '" style="background:' + col + '" aria-label="Couleur ' + (i + 1) + '"></button>').join("") + "</div>" +
+      '<button class="cta" type="submit">ENREGISTRER</button></form>' +
+      '<div class="stats"><div class="stat"><span>RECORD</span><b>' + (pr.bestLevel || 1) + '</b></div><div class="stat"><span>POINTS</span><b>' + C.fmt(pr.points) + '</b></div><div class="stat"><span>RÉUSSIS</span><b>' + C.fmt(pr.cleared) + "</b></div></div>" + offlineNote();
+    let av = p.avatar;
+    body.querySelectorAll(".avs button").forEach((b) => (b.onclick = () => { av = +b.dataset.i; body.querySelectorAll(".avs button").forEach((x) => x.classList.toggle("on", x === b)); }));
+    $("profForm").onsubmit = async (e) => {
+      e.preventDefault();
+      const pseudo = C.clean($("pPseudo").value).replace(/\*/g, "").slice(0, 16);
+      if (pseudo.length < 2) { C.toast("Choisis un pseudo d'au moins 2 lettres."); return; }
+      try { await NET.updateProfile({ pseudo, country: $("pCountry").value, avatar: av }); C.toast("Profil enregistré !"); } catch (e) { C.toast("Profil enregistré sur ce téléphone. Il sera envoyé à la prochaine connexion."); }
+    };
+  }
+
+  function init(h) {
+    hooks = Object.assign(hooks, h);
+    document.querySelectorAll("#comm .tabs button").forEach((b) => (b.onclick = () => show(b.dataset.t)));
+    $("bCommClose").onclick = close;
+  }
+  return { init, open, close, showResults, rememberDefi, linkFor };
+})();
+
+</script>
+<script id="engine-src">
 // ===== Ellipso engine: physics, x2 orbs, procedural levels =====
 var ENGINE = (function () {
   "use strict";
   const TAU = Math.PI * 2;
-  const SPEED = 340, DT = 1 / 240, BALL_R = 4, WALL_W = 7, MAX_AGE = 10, MAX_BALLS = 32;
+  const SPEED = 340, DT = 1 / 240, BALL_R = 4, WALL_W = 7, MAX_AGE = 10, MAX_BALLS = 160;
 
   function mulberry32(a) {
     return function () {
@@ -362,7 +1061,14 @@ var ENGINE = (function () {
       return w;
     });
   }
-  function moving(L) { return L.walls.some((w) => w.rot || w.slide); }
+  function moving(L) { return L.walls.some((w) => w.rot || w.slide) || (L.orbs || []).some((o) => o.move); }
+  function orbsAt(L, t) {
+    return (L.orbs || []).map((o) => {
+      if (!o.move) return o;
+      const m = o.move, k = Math.sin(t * m.speed + m.ph);
+      return { x: o.x + m.ax * k, y: o.y + m.ay * k, r: o.r, focus: o.focus, move: m };
+    });
+  }
   function ptSeg(px, py, ax, ay, bx, by) {
     const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy;
     let t = l ? ((px - ax) * dx + (py - ay) * dy) / l : 0;
@@ -405,9 +1111,11 @@ var ENGINE = (function () {
     return { L, t: t0 || 0, balls: balls || [makeBall(L.start.x, L.start.y, ang)], hits: 0, fail: null, splits: 0, done: false };
   }
   function split(S, b, i, born, ev) {
-    const L = S.L, o = L.orbs[i], a = Math.atan2(b.vy, b.vx);
+    const L = S.L, o = S.orbs[i], a = Math.atan2(b.vy, b.vx);
     b.state = "split"; b.x = o.x; b.y = o.y; b.path.push({ x: o.x, y: o.y });
-    for (const s of [-1, 1]) {
+    const m = o.m || 2; // x2, x3, x4…: the ball becomes m balls fanned out around its direction
+    const offs = m === 2 ? [-1, 1] : Array.from({ length: m }, (_, j) => -1 + (2 * j) / (m - 1));
+    for (const s of offs) {
       const c = makeBall(o.x, o.y, a + s * L.spread);
       c.used = b.used | (1 << i); c.bounces = b.bounces; c.age = b.age; c.gen = b.gen + 1; c.hue = b.hue;
       born.push(c);
@@ -416,6 +1124,7 @@ var ENGINE = (function () {
     if (ev) ev("split", b, o.x, o.y, o);
   }
   function stepBall(S, b, walls, dt, ev, born) {
+    if (b.age > MAX_AGE) { b.state = "dead"; b.why = "lost"; b.path.push({ x: b.x, y: b.y }); if (ev) ev("lost", b, b.x, b.y); return; }
     const L = S.L, rx2 = L.rx * L.rx, ry2 = L.ry * L.ry, px = b.x, py = b.y;
     const dx = b.vx * dt, dy = b.vy * dt;
     let ex = px + dx, ey = py + dy, hit = false, tt = 1;
@@ -425,11 +1134,21 @@ var ENGINE = (function () {
       tt = Math.max(0, Math.min(1, tt));
       ex = px + dx * tt; ey = py + dy * tt; hit = true;
     }
-    if (L.orbs) for (let i = 0; i < L.orbs.length; i++) {
+    if (S.orbs) for (let i = 0; i < S.orbs.length; i++) {
       if (b.used & (1 << i)) continue;
-      const o = L.orbs[i];
-      if (ptSeg(o.x, o.y, px, py, ex, ey) < o.r + BALL_R && S.balls.length + born.length < MAX_BALLS) { split(S, b, i, born, ev); return; }
+      const o = S.orbs[i];
+      if (ptSeg(o.x, o.y, px, py, ex, ey) < o.r + BALL_R && S.balls.length + born.length + (o.m || 2) <= MAX_BALLS) { split(S, b, i, born, ev); return; }
     }
+    if (L.portals && !(b.pcool > 0)) for (const P of L.portals) {
+      for (const [a, z] of [[P.a, P.b], [P.b, P.a]]) {
+        if (ptSeg(a.x, a.y, px, py, ex, ey) < P.r) {
+          b.path.push({ x: a.x, y: a.y }); b.path.push({ x: NaN, y: NaN }); b.path.push({ x: z.x, y: z.y });
+          b.x = z.x; b.y = z.y; b.pcool = 0.25; b.age += dt;
+          if (ev) ev("portal", b, a.x, a.y, z); return;
+        }
+      }
+    }
+    if (b.pcool > 0) b.pcool -= dt;
     if (ev && L.gems) for (const g of L.gems) if (!g.taken && ptSeg(g.x, g.y, px, py, ex, ey) < g.r + BALL_R) ev("gem", b, g.x, g.y, g);
     if (ptSeg(L.target.x, L.target.y, px, py, ex, ey) < L.tr) {
       b.state = "hit"; b.x = L.target.x; b.y = L.target.y; b.path.push({ x: b.x, y: b.y }); S.hits++;
@@ -440,6 +1159,12 @@ var ENGINE = (function () {
     }
     for (const w of walls) {
       if (segSeg(px, py, ex, ey, w.x1, w.y1, w.x2, w.y2) < WALL_W / 2 + BALL_R) {
+        if (w.bump) { // bumper: reflects the ball, does not count as a fence contact
+          let nx = -(w.y2 - w.y1), ny = w.x2 - w.x1; const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
+          const dot = b.vx * nx + b.vy * ny; b.vx -= 2 * dot * nx; b.vy -= 2 * dot * ny;
+          b.path.push({ x: px, y: py }); b.x = px; b.y = py; b.age += dt;
+          if (ev) ev("bump", b, px, py); return;
+        }
         b.state = "dead"; b.why = "wall"; b.x = ex; b.y = ey; b.path.push({ x: ex, y: ey });
         if (ev) ev("wall", b, ex, ey); return;
       }
@@ -464,7 +1189,7 @@ var ENGINE = (function () {
   }
   function stepSim(S, dt, ev) {
     if (S.done) return;
-    const walls = wallsAt(S.L, S.t); S.t += dt;
+    const walls = wallsAt(S.L, S.t); S.orbs = orbsAt(S.L, S.t); S.t += dt;
     const born = [];
     for (const b of S.balls) { if (b.state === "live") stepBall(S, b, walls, dt, ev, born); if (S.fail) break; }
     for (const c of born) S.balls.push(c);
@@ -482,28 +1207,34 @@ var ENGINE = (function () {
   function firstIsOrb(L, a, t0) {
     const ux = Math.cos(a), uy = Math.sin(a), sx = L.start.x, sy = L.start.y;
     let tO = Infinity;
-    for (const o of L.orbs) tO = Math.min(tO, rayCircle(sx, sy, ux, uy, o.x, o.y, o.r + BALL_R));
+    for (const o of orbsAt(L, t0)) tO = Math.min(tO, rayCircle(sx, sy, ux, uy, o.x, o.y, o.r + BALL_R + (o.move ? 30 : 0)));
+    let tX = Infinity; // bumpers and portals redirect the ball: let the full simulation decide
+    for (const w of wallsAt(L, t0)) if (w.bump) tX = Math.min(tX, raySeg(sx, sy, ux, uy, w));
+    for (const P of L.portals || []) tX = Math.min(tX, rayCircle(sx, sy, ux, uy, P.a.x, P.a.y, P.r), rayCircle(sx, sy, ux, uy, P.b.x, P.b.y, P.r));
+    if (tX < tO && tX < rayEllipse(sx, sy, ux, uy, L.rx, L.ry)) return true;
     if (tO === Infinity) return false;
     if (rayEllipse(sx, sy, ux, uy, L.rx, L.ry) < tO) return false;
     if (rayCircle(sx, sy, ux, uy, L.target.x, L.target.y, L.tr) < tO) return false;
     for (const h of L.holes || []) if (rayCircle(sx, sy, ux, uy, h.x, h.y, h.r) < tO) return false;
-    for (const w of wallsAt(L, t0)) if (raySeg(sx, sy, ux, uy, w) < tO) return false;
+    for (const w of wallsAt(L, t0)) if (!w.bump && raySeg(sx, sy, ux, uy, w) < tO) return false;
     return true;
   }
   function solve(L, N, dt) {
     N = N || 720; dt = dt || 1 / 75;
     const times = moving(L) ? [0, 1.1, 2.3] : [0];
-    let ok = 0, thr = 0; const good = [];
+    let ok = 0, thr = 0, maxHits = 0, bestAng = null; const good = [], hits = [];
     for (const t0 of times) for (let k = 0; k < N; k++) {
       const a = ((k + 0.5) / N) * TAU;
       if (!firstIsOrb(L, a, t0)) continue;
       const S = simulate(L, a, t0, dt);
       if (S.fail === "fall" && S.splits === 0) continue;
       thr++;
-      if (!S.fail && S.hits >= L.need) { ok++; if (t0 === 0) good.push(a); }
+      const h = S.fail ? 0 : S.hits; hits.push(h);
+      if (h > maxHits && t0 === 0) { maxHits = h; bestAng = a; }
+      if (h >= L.need) { ok++; if (t0 === 0) good.push(a); }
     }
     // okPer = winning directions per 360 deg, per start time (in half-degree units when N=720)
-    return { f: thr ? ok / thr : 0, okPer: ok / times.length, ok, thr, good, N };
+    return { f: thr ? ok / thr : 0, okPer: ok / times.length, ok, thr, good, N, maxHits, bestAng, hits, nTimes: times.length };
   }
 
   // ---- level generation ----
@@ -530,7 +1261,9 @@ var ENGINE = (function () {
     const sx = fx ? -1 : 1, sy = fy ? -1 : 1;
     const P = (p) => { if (p) { p.x *= sx; p.y *= sy; } };
     [L.start, L.target, L.other].forEach(P);
-    (L.orbs || []).forEach(P); (L.gems || []).forEach(P); (L.holes || []).forEach(P);
+    (L.orbs || []).forEach((o) => { P(o); if (o.move) { o.move.ax *= sx; o.move.ay *= sy; } });
+    (L.gems || []).forEach(P); (L.holes || []).forEach(P); (L.fog || []).forEach(P);
+    (L.portals || []).forEach((q) => { P(q.a); P(q.b); });
     for (const w of L.walls) {
       if (w.rot) {
         w.rot.cx *= sx; w.rot.cy *= sy;
@@ -543,6 +1276,7 @@ var ENGINE = (function () {
       }
     }
     if (fy) L.targetIdx = 1 - L.targetIdx;
+    if (L.bestAng != null) { if (fx) L.bestAng = Math.PI - L.bestAng; if (fy) L.bestAng = -L.bestAng; }
     return L;
   }
   function genLevel(n, seed) {
@@ -560,11 +1294,20 @@ var ENGINE = (function () {
     }
     return null;
   }
+  const THEMES = ["or", "galaxie", "glace", "feu", "arcenciel", "jungle"];
   function genBonus(n, seed) {
     const r = mulberry32(mixSeed(seed, n) + 99);
-    const rx = Math.round(150 + r() * 70), ry = 300, F = foci(rx, ry), ti = r() < 0.5 ? 1 : 0;
-    const L = { n, type: "salve", rx, ry, target: F[ti], targetIdx: ti, other: F[1 - ti], maxB: 1, tr: 22, noFall: true,
-      hidden: n >= 15, walls: [], holes: [], orbs: [], gems: [], balls: 64, need: 0, spread: 0, features: ["bonus"] };
+    const k = Math.floor(n / 5), theme = THEMES[(k + (seed % THEMES.length)) % THEMES.length];
+    const rx = Math.round(120 + r() * 110), ry = 300, F = foci(rx, ry), ti = r() < 0.5 ? 1 : 0;
+    const L = { n, type: "salve", theme, rx, ry, target: F[ti], targetIdx: ti, other: F[1 - ti], maxB: 1, tr: 22, noFall: true,
+      hidden: n >= 15 && r() < 0.5, walls: [], holes: [], orbs: [], gems: [], balls: 48 + Math.min(40, k * 4), need: 0, spread: 0, features: ["bonus"] };
+    const ng = 3 + Math.floor(r() * 4); // crystals placed on the paths of a perfect salvo
+    for (let i = 0; i < ng; i++) {
+      const a = r() * TAU, u = rayEllipse(L.other.x, L.other.y, Math.cos(a), Math.sin(a), rx, ry);
+      const P = { x: L.other.x + Math.cos(a) * u, y: L.other.y + Math.sin(a) * u }, w = 0.25 + r() * 0.5;
+      const g = r() < 0.5 ? { x: L.other.x + (P.x - L.other.x) * w, y: L.other.y + (P.y - L.other.y) * w } : { x: P.x + (L.target.x - P.x) * w, y: P.y + (L.target.y - P.y) * w };
+      if ([L.target, L.other].concat(L.gems).every((q) => Math.hypot(q.x - g.x, q.y - g.y) > 40)) L.gems.push({ x: g.x, y: g.y, r: 9, taken: false });
+    }
     if (n >= 20) { const y = (r() < 0.5 ? -1 : 1) * 40; L.walls.push({ x1: -25, y1: y, x2: 25, y2: y }); }
     L.start = { x: 0, y: -Math.sign(L.target.y) * ry * 0.2 };
     if (L.hidden) L.features.push("hidden");
@@ -574,8 +1317,116 @@ var ENGINE = (function () {
     const d = n - 1;
     return { hi: Math.max(0.22, 0.98 * Math.pow(0.955, d)), lo: Math.max(0.05, 0.5 * Math.pow(0.93, d)), minOk: n < 10 ? 6 : n < 25 ? 4 : n < 50 ? 3 : 2 };
   }
+  // ---- cascade levels: x2 -> x3 -> x4 ... chained in a line, the last multiplier sits on the free focus,
+  // so every ball it produces bounces once and converges on the target (the focal property, at scale)
+  function genCascade(n, seed, opts) {
+    opts = opts || {};
+    const d = n - 1, T0 = Date.now();
+    let best = null, bestScore = Infinity;
+    for (let at = 0; at < 60; at++) {
+      if (best && Date.now() - T0 > 500) break;
+      const r = mulberry32(mixSeed(seed, n) + at * 7919 + 555);
+      const rx = Math.round(155 + r() * 70), ry = 300, F = foci(rx, ry), ti = r() < 0.5 ? 1 : 0, target = F[ti], other = F[1 - ti];
+      const L = { n, type: "tir", cascade: true, rx, ry, target, targetIdx: ti, walls: [], holes: [], orbs: [], gems: [], features: [], hidden: false };
+      const depth = opts.depth || (n < 6 ? 2 : n < 14 ? (r() < 0.55 ? 3 : 2) : n < 30 ? (r() < 0.6 ? 3 : r() < 0.5 ? 4 : 2) : r() < 0.5 ? 4 : 3);
+      const mults = [];
+      for (let k = 0; k < depth; k++) mults.push(k === depth - 1 ? 3 + Math.floor(r() * (opts.big ? 3 : 2)) : 2 + Math.floor(r() * 2));
+      if (depth >= 4) mults[0] = 2;
+      while (mults.reduce((a, b) => a * b, 1) > 140) mults[mults.indexOf(Math.max(...mults.slice(0, -1)))]--;
+      L.spread = 0.05 + r() * 0.02;
+      L.maxB = opts.big ? 3 : n < 10 ? 3 : r() < 0.6 ? 3 : 2;
+      L.tr = 18;
+      const orbR = Math.max(13, 17 - d * 0.05);
+      // build the chain backwards from the free focus
+      const chain = new Array(depth);
+      chain[depth - 1] = { x: other.x, y: other.y, r: orbR + 2, m: mults[depth - 1], focus: true };
+      let pos = chain[depth - 1], th = r() * TAU, ok = true;
+      const far = (p, q, m) => Math.hypot(p.x - q.x, p.y - q.y) > m;
+      for (let k = depth - 2; k >= 0 && ok; k--) {
+        let placed = false;
+        for (let tries = 0; tries < 25 && !placed; tries++) {
+          const t = tries ? r() * TAU : th, dist = 85 + r() * 55;
+          const q = { x: pos.x - Math.cos(t) * dist, y: pos.y - Math.sin(t) * dist };
+          if (!inside(L, q.x, q.y, 0.78) || !far(q, target, 70) || !chain.every((o) => !o || far(q, o, 70))) continue;
+          const m = mults[k], offs = m === 2 ? [-1, 1] : Array.from({ length: m }, (_, j) => -1 + (2 * j) / (m - 1));
+          const off = offs[Math.floor(r() * offs.length)] * L.spread; // which fan member continues the chain
+          chain[k] = { x: q.x, y: q.y, r: orbR, m };
+          th = t - off; pos = chain[k]; placed = true;
+        }
+        if (!placed) ok = false;
+      }
+      if (!ok) continue;
+      let start = null;
+      for (let tries = 0; tries < 20 && !start; tries++) {
+        const dist = 75 + r() * 70, q = { x: pos.x - Math.cos(th) * dist, y: pos.y - Math.sin(th) * dist };
+        if (inside(L, q.x, q.y, 0.85) && far(q, target, 120) && chain.every((o) => far(q, o, 60))) start = q;
+        else th += (r() - 0.5) * 0.02;
+      }
+      if (!start) continue;
+      L.start = start; L.orbs = chain.slice();
+      // optional decoy x2 elsewhere
+      if (n >= 6 && r() < 0.5) {
+        const p = randomInside(r, L, 0.75, (x, y) => far({ x, y }, start, 70) && far({ x, y }, target, 70) && chain.every((o) => far({ x, y }, o, 70)));
+        if (p) L.orbs.push({ x: p.x, y: p.y, r: orbR, m: 2 });
+      }
+      // obstacles kept clear of the designed line
+      const line = [start].concat(chain);
+      const clearOf = (x1, y1, x2, y2, m) => line.every((p) => ptSeg(p.x, p.y, x1, y1, x2, y2) > m) && ptSeg(target.x, target.y, x1, y1, x2, y2) > m
+        && line.every((p, i) => i === 0 || segSeg(line[i - 1].x, line[i - 1].y, p.x, p.y, x1, y1, x2, y2) > m);
+      const nWalls = opts.big ? 0 : Math.min(5, Math.floor(d / 5) + (r() < 0.4 ? 1 : 0));
+      for (let i = 0; i < nWalls; i++) for (let tries = 0; tries < 30; tries++) {
+        const c = randomInside(r, L, 0.8, () => true), a = r() * Math.PI, len = 40 + r() * (40 + Math.min(110, d * 4));
+        const x1 = c.x - (Math.cos(a) * len) / 2, y1 = c.y - (Math.sin(a) * len) / 2, x2 = c.x + (Math.cos(a) * len) / 2, y2 = c.y + (Math.sin(a) * len) / 2;
+        if (!inside(L, x1, y1, 0.9) || !inside(L, x2, y2, 0.9) || !clearOf(x1, y1, x2, y2, 28)) continue;
+        const w = { x1, y1, x2, y2 };
+        if (n >= 8 && r() < 0.3) w.bump = true;
+        L.walls.push(w); break;
+      }
+      if (!opts.big && n >= 9 && r() < Math.min(0.4, 0.15 + (n - 9) * 0.015)) for (let tries = 0; tries < 30; tries++) {
+        const c = randomInside(r, L, 0.55, () => true), len = 70 + r() * 90;
+        if ([[1, 0], [0, 1], [-1, 0], [0, -1]].some(([u, v]) => !inside(L, c.x + (u * len) / 2, c.y + (v * len) / 2, 0.95))) continue;
+        if (!line.concat([target]).every((p) => Math.hypot(c.x - p.x, c.y - p.y) > len / 2 + 22)) continue;
+        L.walls.push({ rot: { cx: c.x, cy: c.y, len, speed: (0.5 + r() * 0.8) * (r() < 0.5 ? -1 : 1), a0: r() * TAU } }); break;
+      }
+      if (!opts.big && n >= 16 && r() < 0.35) {
+        const hr = 14 + r() * 6, p = randomInside(r, L, 0.7, (x, y) => line.concat([target]).every((q) => Math.hypot(x - q.x, y - q.y) > hr + 45) && line.every((q, i) => i === 0 || ptSeg(x, y, line[i - 1].x, line[i - 1].y, q.x, q.y) > hr + 25));
+        if (p) L.holes.push({ x: p.x, y: p.y, r: hr });
+      }
+      // measure: best possible number of balls, and how forgiving the aim is
+      L.need = 1;
+      const res = solve(L, 720);
+      const top = res.maxHits;
+      if (top < chain[depth - 1].m + 1) continue;
+      L.need = Math.max(2, Math.round(top * (opts.big ? 0.3 : n < 6 ? 0.3 : 0.4)));
+      L.star2 = Math.max(L.need + 1, Math.round(top * 0.7)); L.star3 = Math.max(L.star2 + 1, top);
+      const ok2 = res.hits.filter((h) => h >= L.need).length;
+      L.f = res.thr ? ok2 / res.thr : 0; L.okPer = ok2 / res.nTimes; L.bestAng = res.bestAng; L.maxHits = top; L.mults = mults;
+      L._good = res.good.length ? res.good : [res.bestAng];
+      const prod = mults.reduce((x, y) => x * y, 1);
+      const sc = (L.okPer < 3 ? 3 - L.okPer : 0) + Math.max(0, 0.6 - top / prod) * 6 + (opts.big ? -top / 100 : 0);
+      if (!best || sc < bestScore) { best = L; bestScore = sc; }
+      if (sc <= 0 && !opts.big) break;
+    }
+    return best;
+  }
+  // showcase levels for the demo mode: long chains, no obstacles, the biggest convergence we can build
+  function genDemo(n, seed) {
+    const L = genCascade(n, seed, { depth: n % 3 === 0 ? 3 : 4, big: true });
+    if (!L) return null;
+    const r = mulberry32(mixSeed(seed, n) + 99);
+    mirror(L, r() < 0.5, r() < 0.5);
+    L.n = n; L.demo = true; L.features = ["cascade"]; delete L._good;
+    return L;
+  }
   function genRaw(n, seed) {
     if (n % 5 === 0) return genBonus(n, seed);
+    if (n >= 2) {
+      const rc = mulberry32(mixSeed(seed, n) + 2024);
+      if (n === 2 || rc() < (n < 8 ? 0.7 : 0.6)) {
+        const C = genCascade(n, seed);
+        if (C) { finishLevel(C, n, seed); return C; }
+      }
+    }
     const d = n - 1, B = band(n), T0 = Date.now();
     let best = null, bestScore = Infinity;
     for (let at = 0; at < 90; at++) {
@@ -593,7 +1444,12 @@ var ENGINE = (function () {
       const nSlide = n >= 11 && r() < Math.min(0.5, 0.25 + (n - 11) * 0.02) ? (n > 35 && r() < 0.3 ? 2 : 1) : 0;
       const nHole = n >= 16 && r() < Math.min(0.6, 0.25 + (n - 16) * 0.02) ? (n > 30 && r() < 0.4 ? 2 : 1) : 0;
       L.timer = n >= 21 && r() < Math.min(0.5, 0.2 + (n - 21) * 0.02) ? Math.max(4, Math.round(10 - (n - 21) * 0.08)) : 0;
-      const hard = (L.hidden ? 1 : 0) + (nRot ? 1 : 0) + (nSlide ? 1 : 0) + (nHole ? 1 : 0) + (L.timer ? 1 : 0) + (L.maxB === 1 ? 1 : 0) + (L.need >= 3 ? 1 : 0);
+      const nBump = n >= 8 && r() < Math.min(0.5, 0.25 + (n - 8) * 0.02) ? (n > 25 && r() < 0.4 ? 2 : 1) : 0;
+      const nPortal = n >= 18 && r() < Math.min(0.45, 0.25 + (n - 18) * 0.015) ? 1 : 0;
+      const moveOrb = n >= 24 && r() < Math.min(0.45, 0.2 + (n - 24) * 0.015);
+      const nFog = n >= 28 && r() < Math.min(0.45, 0.2 + (n - 28) * 0.015) ? (n > 45 && r() < 0.4 ? 2 : 1) : 0;
+      const hard = (L.hidden ? 1 : 0) + (nRot ? 1 : 0) + (nSlide ? 1 : 0) + (nHole ? 1 : 0) + (L.timer ? 1 : 0) + (L.maxB === 1 ? 1 : 0) + (L.need >= 3 ? 1 : 0)
+        + (nPortal ? 1 : 0) + (moveOrb ? 1 : 0) + (nFog ? 1 : 0);
       if (hard > 1 + Math.floor(n / 7)) continue;
       // start + orbs
       const far = (p, q, m) => Math.hypot(p.x - q.x, p.y - q.y) > m;
@@ -601,7 +1457,8 @@ var ENGINE = (function () {
       if (!start) continue;
       L.start = start;
       const orbR = Math.max(8, 14 - d * 0.1);
-      const pFocus = n <= 4 ? 1 : Math.max(0.2, 1 - (n - 4) * 0.035);
+      // never put a x2 point on a focus when foci are hidden: it would give their position away
+      const pFocus = L.hidden ? 0 : n <= 4 ? 1 : Math.max(0.2, 1 - (n - 4) * 0.035);
       let o1 = r() < pFocus ? { x: other.x, y: other.y, r: orbR, focus: true }
         : (() => { const p = randomInside(r, L, 0.75, (x, y) => far({ x, y }, start, 70) && far({ x, y }, target, 80)); return p && { x: p.x, y: p.y, r: orbR }; })();
       if (!o1) continue;
@@ -620,6 +1477,11 @@ var ENGINE = (function () {
       if (!p2) p2 = randomInside(r, L, 0.75, (x, y) => far({ x, y }, start, 70) && far({ x, y }, target, 80) && far({ x, y }, o1, 90));
       if (!p2) continue;
       L.orbs = [o1, { x: p2.x, y: p2.y, r: orbR }];
+      if (moveOrb) { // the non-focus x2 point drifts back and forth
+        const o = L.orbs[1], a = r() * TAU, amp = 22 + r() * 22;
+        if (inside(L, o.x + Math.cos(a) * amp, o.y + Math.sin(a) * amp, 0.85) && inside(L, o.x - Math.cos(a) * amp, o.y - Math.sin(a) * amp, 0.85))
+          o.move = { ax: Math.cos(a) * amp, ay: Math.sin(a) * amp, speed: 0.9 + r() * 0.8, ph: r() * TAU };
+      }
       if (r() < 0.5) L.orbs.reverse();
       const keyPts = [start, target].concat(L.orbs);
       const segClear = (x1, y1, x2, y2, m) => keyPts.every((p) => ptSeg(p.x, p.y, x1, y1, x2, y2) > m);
@@ -639,6 +1501,25 @@ var ENGINE = (function () {
           } else if (!segClear(x1, y1, x2, y2, 28)) continue;
           L.walls.push(w); break;
         }
+      }
+      for (let i = 0; i < nBump; i++) {
+        for (let tries = 0; tries < 30; tries++) {
+          const c = randomInside(r, L, 0.75, () => true), a = r() * Math.PI, len = 45 + r() * 50;
+          const x1 = c.x - (Math.cos(a) * len) / 2, y1 = c.y - (Math.sin(a) * len) / 2, x2 = c.x + (Math.cos(a) * len) / 2, y2 = c.y + (Math.sin(a) * len) / 2;
+          if (!inside(L, x1, y1, 0.9) || !inside(L, x2, y2, 0.9) || !segClear(x1, y1, x2, y2, 30)) continue;
+          L.walls.push({ x1, y1, x2, y2, bump: true }); break;
+        }
+      }
+      for (let i = 0; i < nPortal; i++) {
+        const pr = 13;
+        const ok = (x, y) => keyPts.every((q) => Math.hypot(x - q.x, y - q.y) > 55) && L.walls.every((w) => w.rot || ptSeg(x, y, w.x1, w.y1, w.x2, w.y2) > 30);
+        const a = randomInside(r, L, 0.72, ok); if (!a) continue;
+        const b = randomInside(r, L, 0.72, (x, y) => ok(x, y) && Math.hypot(x - a.x, y - a.y) > 170); if (!b) continue;
+        L.portals = [{ a, b, r: pr }];
+      }
+      for (let i = 0; i < nFog; i++) {
+        const p = randomInside(r, L, 0.6, (x, y) => Math.hypot(x - target.x, y - target.y) > 70 && Math.hypot(x - start.x, y - start.y) > 70);
+        if (p) (L.fog = L.fog || []).push({ x: p.x, y: p.y, r: 45 + r() * 30 });
       }
       for (let i = 0; i < nRot; i++) {
         for (let tries = 0; tries < 30; tries++) {
@@ -665,7 +1546,11 @@ var ENGINE = (function () {
     }
     if (!best) { const alt = genRaw(n, seed + 1); alt.n = n; return alt; } // extremely unlikely fallback: borrow a layout
     const L = best; L.n = n;
-    L.features.push("orb");
+    finishLevel(L, n, seed);
+    return L;
+  }
+  function finishLevel(L, n, seed) {
+    if (L.cascade) L.features.push("cascade"); else L.features.push("orb");
     if (L.orbs.some((o) => o.focus)) L.features.push("focus");
     if (L.hidden) L.features.push("hidden");
     if (L.walls.some((w) => w.rot)) L.features.push("rot");
@@ -674,6 +1559,10 @@ var ENGINE = (function () {
     if (L.timer) L.features.push("timer");
     if (L.need >= 3) L.features.push("need" + L.need);
     if (L.maxB < 3) L.features.push("fence" + L.maxB);
+    if (L.walls.some((w) => w.bump)) L.features.push("bump");
+    if (L.portals && L.portals.length) L.features.push("portal");
+    if (L.orbs.some((o) => o.move)) L.features.push("moveorb");
+    if (L.fog && L.fog.length) L.features.push("fog");
     // gems along a winning path
     const r = mulberry32(mixSeed(seed, n) + 31337), good = L._good || [];
     const nG = n >= 3 ? (r() < 0.6 ? 1 : 0) + (n >= 12 && r() < 0.35 ? 1 : 0) : 0;
@@ -690,10 +1579,9 @@ var ENGINE = (function () {
     }
     if (L.gems.length) L.features.push("gem");
     delete L._good;
-    return L;
   }
 
-  return { TAU, SPEED, DT, BALL_R, WALL_W, MAX_AGE, mulberry32, foci, wallsAt, moving, ptSeg, rayEllipse, raySeg, rayCircle, inside, makeBall, newSim, stepSim, simulate, solve, genLevel, band };
+  return { genCascade, genDemo, MAX_BALLS, TAU, SPEED, DT, BALL_R, WALL_W, MAX_AGE, THEMES, mulberry32, foci, wallsAt, orbsAt, moving, ptSeg, rayEllipse, raySeg, rayCircle, inside, makeBall, newSim, stepSim, simulate, solve, genLevel, band };
 })();
 if (typeof module !== "undefined") module.exports = ENGINE;
 
@@ -701,24 +1589,13 @@ if (typeof module !== "undefined") module.exports = ENGINE;
 <script>
 (function () {
   "use strict";
-  const E = ENGINE, TAU = E.TAU;
-  const CFG = window.ELLIPSO_CONFIG || {};
-  const $ = (id) => document.getElementById(id);
-  const fmt = (v) => Math.round(v).toLocaleString("fr-FR");
-
-  // ---------------- storage ----------------
-  const store = {
-    get(k, d) { try { const v = localStorage.getItem("ellipso." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
-    set(k, v) { try { localStorage.setItem("ellipso." + k, JSON.stringify(v)); } catch (e) {} },
-  };
+  const E = ENGINE, TAU = E.TAU, C = CORE, $ = C.$, fmt = C.fmt, store = C.store, toast = C.toast;
 
   // ---------------- audio (synthesised) ----------------
   const Snd = {
     ctx: null, master: null, on: store.get("sound", true), lastTick: 0,
     init() {
-      if (!this.ctx) {
-        try { const AC = window.AudioContext || window.webkitAudioContext; this.ctx = new AC(); this.master = this.ctx.createGain(); this.master.gain.value = 0.55; this.master.connect(this.ctx.destination); } catch (e) { this.ctx = null; }
-      }
+      if (!this.ctx) { try { const AC = window.AudioContext || window.webkitAudioContext; this.ctx = new AC(); this.master = this.ctx.createGain(); this.master.gain.value = 0.55; this.master.connect(this.ctx.destination); } catch (e) { this.ctx = null; } }
       if (this.ctx && this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
     },
     tone(freq, dur, type, vol, slide, delay) {
@@ -733,6 +1610,8 @@ if (typeof module !== "undefined") module.exports = ENGINE;
     },
     shoot() { this.tone(380, 0.16, "triangle", 0.18, 2.2); },
     bounce(i) { this.tone(587 * Math.pow(1.335, Math.min(i, 3)), 0.1, "sine", 0.16); },
+    bump() { this.tone(980, 0.08, "square", 0.07, 0.7); },
+    portal() { this.tone(300, 0.25, "sine", 0.14, 3); },
     split(g) { this.tone(700 * Math.pow(1.5, g), 0.18, "square", 0.08, 1.6); this.tone(1400 * Math.pow(1.5, g), 0.12, "sine", 0.1, 1.3, 0.04); },
     hit(k) { this.tone(784 * Math.pow(1.122, k), 0.22, "triangle", 0.2); },
     win(combo) { const base = 523 * Math.pow(1.0595, Math.min(combo, 12)); [1, 1.26, 1.5, 2].forEach((m, i) => this.tone(base * m, 0.32, "triangle", 0.2, 1, i * 0.065)); },
@@ -741,78 +1620,46 @@ if (typeof module !== "undefined") module.exports = ENGINE;
     fail() { this.tone(330, 0.4, "sawtooth", 0.08, 0.5); },
     gem() { this.tone(1568, 0.14, "sine", 0.16, 1.4); this.tone(2349, 0.12, "sine", 0.1, 1, 0.06); },
     click() { this.tone(1200, 0.03, "sine", 0.05); },
+    lock() { this.tone(660, 0.08, "sine", 0.12); this.tone(990, 0.12, "sine", 0.12, 1, 0.06); },
     tick(k) { const now = performance.now(); if (now - this.lastTick < 45) return; this.lastTick = now; this.tone(440 * Math.pow(1.0595, k % 24), 0.1, "triangle", 0.12); },
     perfect() { [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.4, "triangle", 0.18, 1, i * 0.08)); },
     beep() { this.tone(880, 0.08, "square", 0.06); },
+    life() { [880, 1175].forEach((f, i) => this.tone(f, 0.18, "sine", 0.15, 1, i * 0.09)); },
   };
   const buzz = (p) => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
-
-  // ---------------- ads ----------------
-  let adShowing = false;
   function pauseAudio() { try { Snd.ctx && Snd.ctx.suspend(); } catch (e) {} }
   function resumeAudio() { try { Snd.ctx && Snd.on && Snd.ctx.resume(); } catch (e) {} }
-  const Ads = {
-    real: !!(CFG.adClient && typeof window.adBreak === "function"), ready: false,
-    init() { if (this.real && !this.ready) { this.ready = true; try { window.adConfig({ preloadAdBreaks: "on", sound: Snd.on ? "on" : "off" }); } catch (e) { this.real = false; } } },
-    interstitial(name, done) {
-      if (!this.real) return done();
-      let called = false; const fin = () => { if (!called) { called = true; adShowing = false; resumeAudio(); done(); } };
-      try { window.adBreak({ type: "next", name, beforeAd: () => { adShowing = true; pauseAudio(); }, afterAd: resumeAudio, adBreakDone: fin }); } catch (e) { fin(); }
-      setTimeout(() => { if (!called && !adShowing) fin(); }, 4000);
-    },
-    rewarded(name, onReward, onCancel) {
-      if (!this.real) return demoAd(onReward);
-      let shown = false, rewarded = false;
-      try {
-        window.adBreak({
-          type: "reward", name,
-          beforeAd: () => { adShowing = true; pauseAudio(); }, afterAd: () => { adShowing = false; resumeAudio(); },
-          beforeReward: (showAdFn) => { shown = true; showAdFn(); },
-          adDismissed: () => {}, adViewed: () => { rewarded = true; },
-          adBreakDone: () => {
-            if (rewarded) onReward();
-            else if (!shown) { toast("Pas de pub disponible pour l'instant : c'est offert !"); onReward(); }
-            else { toast("Regarde la pub jusqu'au bout pour la récompense."); onCancel && onCancel(); }
-          },
-        });
-      } catch (e) { onReward(); }
-    },
-  };
-  function demoAd(onReward) {
-    const ov = $("ad"), bar = $("adBar"), btn = $("bAdClose");
-    ov.hidden = false; btn.disabled = true; btn.innerHTML = 'Patiente… <span id="adSec">3</span>';
-    const t0 = performance.now(), dur = 3000;
-    const tick = () => {
-      const p = Math.min(1, (performance.now() - t0) / dur);
-      bar.style.width = (p * 100).toFixed(1) + "%";
-      const s = $("adSec"); if (s) s.textContent = Math.ceil((1 - p) * 3);
-      if (p < 1) requestAnimationFrame(tick); else { btn.disabled = false; btn.textContent = "RÉCUPÉRER LA RÉCOMPENSE"; }
-    };
-    tick();
-    btn.onclick = () => { ov.hidden = true; onReward(); };
-  }
-  function fillBanners() {
-    document.querySelectorAll("[data-banner]").forEach((el) => {
-      if (el.dataset.done) return; el.dataset.done = "1";
-      if (CFG.adClient && CFG.bannerSlot) {
-        el.innerHTML = '<ins class="adsbygoogle" style="display:inline-block;width:320px;height:50px" data-ad-client="' + CFG.adClient + '" data-ad-slot="' + CFG.bannerSlot + '"></ins>';
-        try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
-      } else el.innerHTML = '<div class="demo">ESPACE PUBLICITAIRE · 320 × 50</div>';
-    });
-  }
+  ADS.setHooks({ pause: () => { pauseAudio(); }, resume: () => { resumeAudio(); } });
+  const cfg = () => NET.st.config;
 
-  let toastT = 0;
-  function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2400); }
+  // ---------------- level generation in a background worker ----------------
+  const Gen = (() => {
+    let worker = null, nextId = 1; const waiting = new Map(), cache = new Map();
+    try {
+      const src = $("engine-src").textContent + "\nonmessage=function(e){var d=e.data;try{postMessage({id:d.id,L:d.demo?ENGINE.genDemo(d.n,d.seed):ENGINE.genLevel(d.n,d.seed)})}catch(err){postMessage({id:d.id,err:String(err)})}};";
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+      worker.onmessage = (e) => { const w = waiting.get(e.data.id); if (!w) return; waiting.delete(e.data.id); e.data.L ? w.ok(e.data.L) : w.ko(e.data.err); };
+      worker.onerror = () => { worker = null; };
+    } catch (e) { worker = null; }
+    function get(n, seed, demo) {
+      const k = (demo ? "d" : "") + seed + ":" + n, gen = () => (demo ? E.genDemo(n, seed) : E.genLevel(n, seed));
+      if (!cache.has(k)) {
+        const p = worker ? new Promise((ok, ko) => { const id = nextId++; waiting.set(id, { ok, ko }); worker.postMessage({ id, n, seed, demo: !!demo }); }).catch(gen)
+          : new Promise((ok) => setTimeout(() => ok(gen()), 0));
+        cache.set(k, p);
+        if (cache.size > 12) cache.delete(cache.keys().next().value);
+      }
+      return cache.get(k).then((L) => JSON.parse(JSON.stringify(L)));
+    }
+    return { get };
+  })();
 
-  // ---------------- levels ----------------
-  // each game has its own seed: levels differ from one game to the next, but stay identical while retrying
+  // ---------------- seeds, modes, news ----------------
   function newSeed() { let v = 0; try { const a = new Uint32Array(1); crypto.getRandomValues(a); v = a[0]; } catch (e) { v = (Math.random() * 4294967296) >>> 0; } return v || 1; }
   let seed = store.get("seed", 0) >>> 0; if (!seed) { seed = newSeed(); store.set("seed", seed); }
-  const gameCode = () => seed.toString(36).toUpperCase().padStart(6, "0").slice(-6);
-  const cache = new Map();
-  function getLevel(n) { const k = seed + ":" + n; if (!cache.has(k)) cache.set(k, E.genLevel(n, seed)); return JSON.parse(JSON.stringify(cache.get(k))); }
+  const gameCode = (s) => (s >>> 0).toString(36).toUpperCase().padStart(6, "0").slice(-6);
   const NEWS = {
-    orb: ["Points ×2", "Ta balle doit traverser un point ×2 avant de toucher la clôture : elle se divise en deux. Si elle touche la clôture avant, elle tombe et le niveau recommence. Mets 2 balles dans la cible pour passer."],
+    orb: ["Points ×2", "Ta balle doit traverser un point ×2 avant de toucher la clôture : elle se divise en deux. Si elle touche la clôture avant, elle tombe et tu perds une vie. Mets 2 balles dans la cible pour passer."],
     focus: ["Le secret des foyers", "Un point ×2 posé sur un foyer est spécial : les deux balles qui en sortent rebondissent et filent toutes les deux vers l'autre foyer, là où est la cible."],
     fence2: ["Clôture fragile", "Ici, chaque balle ne peut toucher la clôture que 2 fois. Au 3e contact, elle disparaît."],
     fence1: ["Un seul rebond", "Chaque balle ne peut toucher la clôture qu'une seule fois. Pas le droit à l'erreur."],
@@ -822,122 +1669,187 @@ if (typeof module !== "undefined") module.exports = ENGINE;
     rot: ["Mur tournant", "Un mur tourne sur lui-même. Vise, puis attends le bon moment pour tirer."],
     slide: ["Mur glissant", "Ce mur avance et recule. Observe son rythme avant de tirer."],
     hole: ["Trou noir", "Une balle qui passe sur un trou noir disparaît. Contourne-le."],
-    timer: ["Chrono", "Tu as quelques secondes pour tirer. Si le temps s'écoule, le niveau recommence."],
+    timer: ["Chrono", "Tu as quelques secondes pour tirer. Si le temps s'écoule, tu perds une vie."],
     gem: ["Cristaux", "Fais passer une balle sur un cristal pour gagner 50 points de plus."],
-    bonus: ["Niveau bonus", "Place la source et lâche une salve de balles. Chaque balle dans la cible rapporte des points. Ce niveau ne peut pas être raté."],
+    bonus: ["Niveau bonus", "Place la source et lâche une salve de balles. Chaque balle dans la cible rapporte des points, les cristaux aussi. Ce niveau ne coûte jamais de vie."],
+    bump: ["Rebondisseur", "Les barres jaunes renvoient la balle comme un miroir. Ce rebond ne compte pas comme un contact avec la clôture."],
+    portal: ["Portails", "Une balle qui entre dans un portail ressort par l'autre, dans la même direction."],
+    moveorb: ["Point ×2 mobile", "Un des points ×2 se déplace. Tire au bon moment pour le traverser."],
+    cascade: ["Cascade ×2 ×3 ×4", "Chaque point multiplie toutes les balles qui le traversent : 1 balle, puis 2, puis 6, puis 24… Le dernier point est posé sur un foyer : toutes ses balles rebondissent et convergent sur la cible. Vise la chaîne entière : la ligne verte te montre jusqu'où elle va. Plus tu mets de balles, plus tu gagnes d'étoiles."],
+    fog: ["Brouillard", "Une zone de brouillard cache une partie de la table. Tes balles y passent, mais tu ne les vois plus."],
   };
-  let seen = store.get("seen2", []);
-  let newsQueue = [];
+  const THEMES = {
+    or: { name: "OR", hue: 45, spread: 18, shape: "star" }, galaxie: { name: "GALAXIE", hue: 275, spread: 40, shape: "dot" },
+    glace: { name: "GLACE", hue: 195, spread: 20, shape: "diamond" }, feu: { name: "FEU", hue: 18, spread: 22, shape: "flame" },
+    arcenciel: { name: "ARC-EN-CIEL", hue: -1, spread: 360, shape: "heart" }, jungle: { name: "JUNGLE", hue: 120, spread: 30, shape: "leaf" },
+  };
+  let seen = store.get("seen2", []), newsQueue = [];
 
   // ---------------- state ----------------
+  const prog = Object.assign({ level: store.get("level", 1), bestLevel: store.get("bestLevel", 1), points: store.get("points", 0), cleared: 0, fails: 0 }, store.get("progress", {}));
   const G = {
-    screen: "menu", n: store.get("level", 1), L: null, S: null, points: store.get("points", 0), combo: 0, tries: 0, cleared: 0,
+    screen: "menu", mode: "main", n: prog.level, L: null, S: null, points: prog.points, combo: 0, tries: 0, cleared: 0,
     phase: "aim", ghost: null, ang: 0, time: 0, phaseT: 0, src: null, aiming: false, dragging: false, fast: false,
-    revealed: false, paused: false, fade: 0, dispRx: 200, hue: 190, timeLeft: 0, failWhy: "",
+    revealed: false, paused: false, fade: 0, hue: 190, timeLeft: 0, failWhy: "", locked: false,
+    lives: store.get("lives", 5), lifeAt: store.get("lifeAt", 0), defi: null, dLives: 3, dPoints: 0,
+    slow: 0, auto: null, demoSeed: 1, preview: null, stars: store.get("stars", 0),
   };
-  let parts = [], rings = [], pops = [], shake = 0, flash = 0;
-  let view = { s: 1, cx: 0, cy: 0 };
-  let W = 0, H = 0, DPR = 1;
+  let parts = [], rings = [], pops = [], shake = 0, flash = 0, view = { s: 1, cx: 0, cy: 0 }, W = 0, H = 0, DPR = 1;
   const cv = $("cv"), ctx = cv.getContext("2d");
-  const save = () => { store.set("points", G.points); store.set("level", G.n); const b = store.get("bestLevel", 1); if (G.n > b) store.set("bestLevel", G.n); };
-  function hueFor(n) { let h = (192 + (seed % 7) * 41 + (n - 1) * 29) % 360; if (h > 318 || h < 18) h = (h + 60) % 360; return h; }
-  const skipCost = () => 150 + 15 * G.n;
+  const curSeed = () => (G.mode === "defi" ? G.defi.seed : G.mode === "demo" ? G.demoSeed : seed);
+  function saveProg() {
+    if (G.mode !== "main") return;
+    store.set("stars", G.stars);
+    prog.level = G.n; prog.points = G.points; prog.bestLevel = Math.max(prog.bestLevel || 1, G.n);
+    store.set("progress", prog); store.set("level", G.n); store.set("points", G.points); store.set("bestLevel", prog.bestLevel);
+    NET.saveProgress({ level: prog.level, bestLevel: prog.bestLevel, points: prog.points, cleared: prog.cleared, fails: prog.fails });
+  }
+  function hueFor(n) { let h = (192 + (curSeed() % 7) * 41 + (n - 1) * 29) % 360; if (h > 318 || h < 18) h = (h + 60) % 360; return h; }
+  const skipCost = () => (cfg().skipCostBase || 150) + (cfg().skipCostPerLevel || 15) * G.n;
+  const refillCost = () => 200 + 10 * G.n;
+
+  // ---------------- lives ----------------
+  const livesMax = () => Math.max(1, cfg().livesMax || 5);
+  const regenMs = () => Math.max(1, cfg().lifeRegenMin || 15) * 60000;
+  function tickLives() {
+    const max = livesMax();
+    if (G.lives >= max) { if (G.lives > max) G.lives = max; G.lifeAt = 0; }
+    else {
+      if (!G.lifeAt) G.lifeAt = Date.now();
+      const g = Math.floor((Date.now() - G.lifeAt) / regenMs());
+      if (g > 0) { G.lives = Math.min(max, G.lives + g); G.lifeAt = G.lives >= max ? 0 : G.lifeAt + g * regenMs(); Snd.life(); }
+    }
+    store.set("lives", G.lives); store.set("lifeAt", G.lifeAt);
+  }
+  const nextLife = () => (G.lifeAt ? Math.max(0, regenMs() - (Date.now() - G.lifeAt)) : 0);
+  const mmss = (ms) => { const s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+  function addLives(k) { G.lives = Math.min(livesMax(), G.lives + k); if (G.lives >= livesMax()) G.lifeAt = 0; tickLives(); Snd.life(); }
+  const curLives = () => (G.mode === "defi" ? G.dLives : G.mode === "demo" ? 1 : G.lives);
+  const curMax = () => (G.mode === "defi" ? 3 : G.mode === "demo" ? 0 : livesMax());
+  function heartsHTML(n, max, lostIdx) { let h = ""; for (let i = 0; i < max; i++) h += '<i class="' + (i < n ? "on" : "") + (i === lostIdx ? " lost" : "") + '"></i>'; return h; }
 
   // ---------------- layout ----------------
   function resize() { DPR = Math.min(window.devicePixelRatio || 1, 2); W = window.innerWidth; H = window.innerHeight; cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); layout(); }
   function layout() {
     const rx = G.screen === "play" && G.L ? G.L.rx : 190, ry = 300;
     let top = 20, bot = 20;
-    if (G.screen === "play") {
-      const ht = document.querySelector(".hud-top").getBoundingClientRect(), hb = document.querySelector(".hud-bottom").getBoundingClientRect();
-      top = ht.bottom + 4; bot = H - hb.top + 4;
-    }
+    if (G.screen === "play") { const ht = document.querySelector(".hud-top").getBoundingClientRect(), hb = document.querySelector(".hud-bottom").getBoundingClientRect(); top = ht.bottom + 4; bot = H - hb.top + 4; }
     const avH = Math.max(120, H - top - bot);
-    view.s = Math.min((W - 20) / (2 * rx + 24), avH / (2 * ry + 24));
-    view.cx = W / 2; view.cy = top + avH / 2;
+    view.s = Math.min((W - 20) / (2 * rx + 24), avH / (2 * ry + 24)); view.cx = W / 2; view.cy = top + avH / 2;
   }
   const toWorld = (e) => ({ x: (e.clientX - view.cx) / view.s, y: (e.clientY - view.cy) / view.s });
 
   // ---------------- HUD ----------------
-  function comboMult() { return 1 + 0.25 * Math.min(Math.max(0, G.combo - 1), 8); }
+  const comboMult = () => 1 + 0.25 * Math.min(Math.max(0, G.combo - 1), 8);
+  let shownLives = -1;
   function renderHUD() {
-    const L = G.L;
+    const L = G.L; if (!L) return;
+    $("hLvlLbl").textContent = G.mode === "defi" ? "DÉFI · NIV." : G.mode === "demo" ? "DÉMO" : "NIVEAU";
     $("hLvl").textContent = G.n;
-    $("hScore").textContent = fmt(G.points);
+    $("hScore").textContent = fmt(G.mode === "defi" ? G.dPoints : G.mode === "demo" ? (G.S ? G.S.balls.filter((b) => b.state === "live" || b.state === "hit").length : 1) : G.points);
+    document.querySelector(".lbl-pts").textContent = G.mode === "demo" ? "BALLES" : "POINTS";
+    const lv = curLives();
+    $("hLives").innerHTML = heartsHTML(lv, curMax(), shownLives > lv ? lv : -1); shownLives = lv;
     const c = $("hCombo"); if (G.combo > 1) { c.hidden = false; c.textContent = "COMBO ×" + String(comboMult()).replace(".", ","); } else c.hidden = true;
     const hits = G.S ? G.S.hits : 0;
-    $("hNeed").hidden = L.type === "salve";
-    $("hNeedTxt").textContent = Math.min(hits, 99) + "/" + L.need;
-    $("hNeed").classList.toggle("ok", hits >= L.need && L.need > 0);
+    $("hNeed").hidden = L.type === "salve"; $("hNeedTxt").textContent = G.mode === "demo" ? String(hits) : Math.min(hits, 999) + "/" + L.need; $("hNeed").classList.toggle("ok", hits >= L.need && L.need > 0);
     const chips = [];
-    if (L.type === "salve") chips.push(["BONUS", "gold"]);
+    if (L.type === "salve") chips.push(["BONUS · " + (THEMES[L.theme] || THEMES.or).name, "gold"]);
+    else if (G.mode === "demo") chips.push(["CASCADE " + (L.mults || []).map((m) => "×" + m).join(" → "), "gold"]);
     else {
+      if (L.star3) chips.push(["★ " + L.need + " · ★★ " + L.star2 + " · ★★★ " + L.star3 + " balles", "gold"]);
       chips.push(["Clôture : " + L.maxB + " contact" + (L.maxB > 1 ? "s" : "") + " max", L.maxB < 3 ? "hot" : ""]);
       if (L.hidden && !G.revealed) chips.push(["Foyers cachés", "hot"]);
       if (L.walls.some((w) => w.rot)) chips.push(["Mur tournant", "hot"]);
       if (L.walls.some((w) => w.slide)) chips.push(["Mur glissant", "hot"]);
+      if (L.walls.some((w) => w.bump)) chips.push(["Rebondisseur", ""]);
       if (L.holes && L.holes.length) chips.push(["Trou noir", "hot"]);
+      if (L.portals && L.portals.length) chips.push(["Portails", ""]);
+      if (L.orbs.some((o) => o.move)) chips.push(["×2 mobile", "hot"]);
+      if (L.fog && L.fog.length) chips.push(["Brouillard", "hot"]);
       if (L.timer) chips.push(["Chrono " + L.timer + " s", "hot"]);
     }
     $("hChips").innerHTML = chips.map(([t, k]) => '<span class="chip ' + k + '">' + t + "</span>").join("");
     const aim = G.phase === "aim";
     $("bHint").hidden = !(L.hidden && !G.revealed && aim);
     $("bSalvo").hidden = !(L.type === "salve" && aim);
-    $("aimRow").hidden = !(L.type === "tir" && aim);
+    $("aimRow").hidden = !(L.type === "tir" && aim) || G.mode === "demo";
+    $("bExitDemo").hidden = G.mode !== "demo";
     updateHelp();
   }
   let aimInfo = { kind: "none" };
   function updateHelp() {
     const h = $("hHelp"), L = G.L; h.classList.remove("good", "bad");
-    if (L.type === "salve") { h.textContent = "Glisse pour placer la source, puis lance la salve"; return; }
-    if (G.phase === "fly") { h.textContent = "Maintiens le doigt pour accélérer"; return; }
+    if (L.type === "salve") { h.textContent = G.locked ? "Source calée pile sur le foyer !" : "Glisse pour placer la source, puis lance la salve"; if (G.locked) h.classList.add("good"); return; }
+    if (G.mode === "demo") { h.textContent = demoCaption(); h.classList.add("good"); return; }
+    if (G.phase === "fly") { const n = G.S ? G.S.balls.filter((b) => b.state === "live").length : 0; h.textContent = n > 1 ? n + " balles en jeu · maintiens pour accélérer" : "Maintiens le doigt pour accélérer"; return; }
     if (G.phase !== "aim") { h.textContent = ""; return; }
-    if (aimInfo.kind === "orb") { h.textContent = "Tir correct : la balle passe par un point ×2"; h.classList.add("good"); }
-    else if (aimInfo.kind === "fence") { h.textContent = "Attention : la balle touchera la clôture sans ×2 et tombera"; h.classList.add("bad"); }
-    else if (aimInfo.kind === "wall" || aimInfo.kind === "hole") { h.textContent = "Attention : obstacle sur la trajectoire"; h.classList.add("bad"); }
-    else if (aimInfo.kind === "target") { h.textContent = "Une seule balle ne suffit pas : passe par un point ×2"; h.classList.add("bad"); }
+    const k = aimInfo.kind, pv = G.preview;
+    if (k === "orb" && pv && pv.chain.length) { h.textContent = "Chaîne : " + pv.chain.map((m) => "×" + m).join(" → ") + " · " + pv.count + " balles" + (pv.focus ? " vers le foyer" : ""); h.classList.add("good"); }
+    else if (k === "orb") { h.textContent = "Tir correct : la balle passe par un point ×2"; h.classList.add("good"); }
+    else if (k === "fence") { h.textContent = "Attention : la balle touchera la clôture sans ×2 et tombera"; h.classList.add("bad"); }
+    else if (k === "wall" || k === "hole") { h.textContent = "Attention : obstacle sur la trajectoire"; h.classList.add("bad"); }
+    else if (k === "bump" || k === "portal") h.textContent = k === "bump" ? "La balle va rebondir sur la barre jaune" : "La balle va passer par un portail";
+    else if (k === "target") { h.textContent = "Une seule balle ne suffit pas : passe par un point ×2"; h.classList.add("bad"); }
     else h.textContent = "Glisse pour viser · relâche pour tirer";
   }
   function bumpScore() { const b = $("hScore"); b.classList.remove("bump"); void b.offsetWidth; b.classList.add("bump"); }
 
   // ---------------- screens ----------------
-  function showScreen(name) {
-    G.screen = name;
-    $("menu").hidden = name !== "menu";
-    $("hud").hidden = name !== "play";
-    layout();
-  }
+  const modalsOpen = () => ["news", "fail", "pause", "comm", "ad", "defiCard", "dover", "gift", "how", "loading"].some((id) => !$(id).hidden);
+  function showScreen(name) { G.screen = name; $("menu").hidden = name !== "menu"; $("hud").hidden = name !== "play"; layout(); }
   function renderMenu() {
-    const best = store.get("bestLevel", 1);
-    $("mBest").innerHTML = best > 1 ? "Record : <b>niveau " + best + "</b> · <b>" + fmt(G.points) + "</b> points" : "Des niveaux à l'infini. Jusqu'où iras-tu ?";
+    tickLives();
+    const best = prog.bestLevel || 1;
+    $("mBest").innerHTML = best > 1 ? "Record : <b>niveau " + best + "</b> · <b>" + fmt(G.points) + "</b> points" : "Des niveaux à l'infini, différents pour chaque partie.";
     $("bPlaySub").textContent = G.n > 1 ? "Reprendre au niveau " + G.n : "Niveau 1";
-    $("bRestart1").hidden = false;
-    $("bRestart1").textContent = G.n > 1 ? "Nouvelle partie : de nouveaux niveaux depuis le 1" : "Nouvelle partie : changer de niveaux";
+    $("bRestart1").textContent = G.n > 1 ? "Nouvelle partie (nouveaux niveaux depuis le 1)" : "Nouvelle partie (changer de niveaux)";
     $("bSound").textContent = "Son : " + (Snd.on ? "oui" : "non");
-    fillBanners();
+    const ann = (cfg().announcement || "").trim(); $("mAnnounce").hidden = !ann; $("mAnnounce").textContent = ann;
+    $("mLives").innerHTML = '<div class="lives">' + heartsHTML(G.lives, livesMax()) + "</div>" + (G.lives < livesMax() ? "<span>Prochaine vie dans " + mmss(nextLife()) + "</span>" : "<span>Vies au maximum</span>");
+    document.querySelectorAll("[data-banner]").forEach((el) => { if (!el.closest("[hidden]")) ADS.banner(el); });
   }
 
   // ---------------- flow ----------------
   function play(from) {
-    Snd.init(); Ads.init();
-    G.n = from; G.combo = 0; save();
+    Snd.init(); NET.stat("games");
+    G.mode = "main"; G.n = from; G.combo = 0; saveProg();
     showScreen("play"); startLevel(true);
   }
-  function startLevel(fresh) {
-    const prevL = G.L, L = getLevel(G.n);
+  function startDefi(ch) {
+    Snd.init(); NET.stat("games");
+    G.mode = "defi"; G.defi = ch; G.dLives = 3; G.dPoints = 0; G.n = 1; G.combo = 0; shownLives = -1;
+    COMMUNITY.rememberDefi(ch);
+    showScreen("play"); startLevel(true);
+  }
+  function startDemo() {
+    Snd.init();
+    G.mode = "demo"; G.demoSeed = newSeed(); G.n = 1; G.combo = 0;
+    showScreen("play"); startLevel(true);
+  }
+  let loadToken = 0;
+  async function startLevel(fresh) {
+    const token = ++loadToken, n = G.n, sd = curSeed(), demo = G.mode === "demo";
+    let L;
+    const t = setTimeout(() => { if (token === loadToken) $("loading").hidden = false; }, 120);
+    try { L = await Gen.get(n, sd, demo); } finally { clearTimeout(t); $("loading").hidden = true; }
+    if (!L) { G.n++; return startLevel(fresh); }
+    if (token !== loadToken || G.n !== n) return;
+    const prevL = G.L;
     if (!fresh && prevL && prevL.n === L.n && prevL.gems) L.gems.forEach((g, i) => { if (prevL.gems[i] && prevL.gems[i].taken) g.taken = true; });
-    G.L = L; G.S = null; G.revealed = fresh ? false : G.revealed; G.ghost = fresh ? null : G.ghost;
-    if (fresh) G.tries = 0;
-    G.phase = "aim"; G.phaseT = 0; G.time = 0; G.fade = fresh ? 0 : 1; G.fast = false; G.timeLeft = L.timer || 0;
-    G.hue = hueFor(G.n);
-    if (L.type === "salve") G.src = { x: L.start.x, y: L.start.y };
+    G.L = L; G.S = null; if (fresh) { G.revealed = false; G.ghost = null; G.tries = 0; }
+    G.phase = "aim"; G.phaseT = 0; G.time = 0; G.fade = fresh ? 0 : 1; G.fast = false; G.timeLeft = L.timer || 0; G.locked = false; G.slow = 0; G.preview = null;
+    G.auto = demo && L.bestAng != null ? { t: -0.9, dur: 1.6 } : null;
+    G.hue = L.type === "salve" ? ((THEMES[L.theme] || THEMES.or).hue + 360) % 360 : hueFor(G.n);
+    if (L.type === "salve") { G.src = { x: L.start.x, y: L.start.y }; }
     else if (fresh) { const o = L.orbs[1] || L.orbs[0]; G.ang = Math.atan2(o.y - L.start.y, o.x - L.start.x) + 0.35; }
-    if (fresh) { parts = []; rings = []; pops = []; pops.push({ text: L.type === "salve" ? "BONUS" : "NIVEAU " + G.n, x: 0, y: -40, life: 1.1, max: 1.1, size: 34, color: "#ffffff", big: true }); }
+    if (demo) G.ang = L.bestAng + (G.n % 2 ? 0.9 : -0.9);
+    if (fresh) { parts = []; rings = []; pops = []; pops.push({ text: L.type === "salve" ? "BONUS " + (THEMES[L.theme] || THEMES.or).name : demo ? "1 BALLE" : (G.mode === "defi" ? "DÉFI · " : "NIVEAU ") + G.n, x: 0, y: -40, life: 1.1, max: 1.1, size: 30, color: "#ffffff", big: true }); }
     renderHUD(); layout();
     if (fresh) {
-      newsQueue = L.features.filter((f) => NEWS[f] && !seen.includes(f));
+      newsQueue = demo ? [] : L.features.filter((f) => NEWS[f] && !seen.includes(f));
       if (newsQueue.length) showNews();
-      setTimeout(() => getLevel(G.n + 1), 500);
+      Gen.get(n + 1, sd, demo); if (!demo) Gen.get(n + 2, sd);
     }
   }
   function showNews() {
@@ -952,8 +1864,38 @@ if (typeof module !== "undefined") module.exports = ENGINE;
     for (const w of E.wallsAt(L, G.time)) if (E.ptSeg(p.x, p.y, w.x1, w.y1, w.x2, w.y2) < 12) return false;
     return true;
   }
+  // bonus calibration: when the foci are visible, a source dropped close to the free focus snaps exactly onto it
+  function placeSrc(p) {
+    const L = G.L, f = L.other;
+    const showF = !L.hidden || G.revealed;
+    if (showF && f && Math.hypot(p.x - f.x, p.y - f.y) < 16) { const was = G.locked; G.src = { x: f.x, y: f.y }; G.locked = true; if (!was) { Snd.lock(); buzz(10); } updateHelp(); return; }
+    if (!validSrc(p)) return;
+    G.src = p; if (G.locked) { G.locked = false; updateHelp(); }
+  }
+  function canPlay() { tickLives(); return curLives() > 0; }
+  // assisted aim: predict the shot up to the fence (splits included) and report the chain of multipliers it goes through
+  function predict(ang) {
+    const L = G.L, P = Object.assign({}, L, { maxB: 0, noFall: true, gems: null });
+    const S = E.newSim(P, ang, G.time), chain = [], seenOrb = new Set();
+    let focus = false, steps = 0;
+    const ev = (type, b, x, y, o) => { if (type === "split") { const key = o.move || o; if (!seenOrb.has(key)) { seenOrb.add(key); chain.push(o.m || 2); } if (o.focus) focus = true; } };
+    while (!S.done && steps < 900) { E.stepSim(S, 1 / 120, ev); steps++; }
+    const count = S.balls.filter((b) => b.state !== "split" && b.why !== "wall" && b.why !== "hole").length;
+    return { S, chain, count: S.splits ? count : 1, focus };
+  }
+  function magnetAim() { // nudges the angle (at most 0.6°) to the direction that keeps the longest chain
+    const base = G.ang, cur = predict(base); let best = cur, bestA = base;
+    for (let k = -12; k <= 12; k++) {
+      if (!k) continue;
+      const a = base + (k * 0.05 * Math.PI) / 180, p = predict(a);
+      if (p.count > best.count || (p.count === best.count && p.chain.length > best.chain.length)) { best = p; bestA = a; }
+    }
+    if (bestA !== base && best.count > cur.count) { G.ang = bestA; toast("Visée aimantée : " + best.chain.map((m) => "×" + m).join(" → ") + " · " + best.count + " balles"); }
+  }
   function fire() {
     if (G.phase !== "aim" || G.L.type !== "tir" || G.paused || G.screen !== "play") return;
+    if (!canPlay()) { showFailCard(); return; }
+    if (G.mode !== "demo") magnetAim();
     Snd.init();
     G.tries++; G.ghost = null;
     G.S = E.newSim(G.L, G.ang, G.time);
@@ -962,11 +1904,14 @@ if (typeof module !== "undefined") module.exports = ENGINE;
   }
   function fireSalvo() {
     if (G.phase !== "aim" || G.L.type !== "salve" || G.paused) return;
-    if (!validSrc(G.src)) { toast("Trop près de la cible, d'un mur ou du bord"); return; }
+    if (!G.locked && !validSrc(G.src)) { toast("Trop près de la cible, d'un mur ou du bord"); return; }
     Snd.init(); Snd.shoot();
-    const L = G.L; L.start = { x: G.src.x, y: G.src.y };
+    const L = G.L, th = THEMES[L.theme] || THEMES.or; L.start = { x: G.src.x, y: G.src.y };
     const balls = [];
-    for (let i = 0; i < L.balls; i++) { const b = E.makeBall(G.src.x, G.src.y, (i / L.balls) * TAU + 0.031); b.hue = (i / L.balls) * 360; b.trail = []; balls.push(b); }
+    for (let i = 0; i < L.balls; i++) {
+      const b = E.makeBall(G.src.x, G.src.y, (i / L.balls) * TAU + 0.031);
+      b.hue = th.hue < 0 ? (i / L.balls) * 360 : th.hue + Math.sin(i * 2.4) * th.spread; b.trail = []; balls.push(b);
+    }
     G.S = E.newSim(L, 0, G.time, balls);
     G.phase = "fly"; G.phaseT = 0; renderHUD();
   }
@@ -975,18 +1920,23 @@ if (typeof module !== "undefined") module.exports = ENGINE;
     if (type === "bounce") {
       if (!salvo) { Snd.bounce(b.bounces - 1); burst(x, y, 6, b.hue, 90, 0.35, 2); rings.push({ x, y, r: 4, life: 0.35, max: 0.35, hue: b.hue }); }
       else if (Math.random() < 0.15) burst(x, y, 2, b.hue, 60, 0.3, 1.5);
-    } else if (type === "split") {
+    } else if (type === "bump") { if (!salvo) { Snd.bump(); burst(x, y, 8, 52, 110, 0.35, 2); } }
+    else if (type === "portal") { if (!salvo) Snd.portal(); burst(x, y, 12, 210, 120, 0.45, 2); burst(g.x, g.y, 12, 30, 120, 0.45, 2); }
+    else if (type === "split") {
       Snd.split(b.gen); buzz(12);
       burst(x, y, 26, 275, 200, 0.6, 2.4); rings.push({ x, y, r: 6, life: 0.5, max: 0.5, hue: 275, big: true });
-      pops.push({ text: "×2", x, y: y - 18, life: 0.8, max: 0.8, size: 20, color: "#c9b8ff" });
+      const m = g.m || 2; pops.push({ text: "×" + m, x, y: y - 20, life: 0.9, max: 0.9, size: 18 + m * 2, color: ORB_COL[m] || "#c9b8ff" });
     } else if (type === "gem") {
-      g.taken = true; G.points += 50; bumpScore(); Snd.gem(); buzz(15);
-      burst(x, y, 22, 165, 160, 0.6, 2.5); pops.push({ text: "+50", x, y: y - 10, life: 0.9, max: 0.9, size: 18, color: "#3fe0c5" });
+      g.taken = true; const v = salvo ? 20 : 50; addPoints(v); bumpScore(); Snd.gem(); buzz(15);
+      burst(x, y, 22, 165, 160, 0.6, 2.5); pops.push({ text: "+" + v, x, y: y - 10, life: 0.9, max: 0.9, size: 18, color: "#3fe0c5" });
     } else if (type === "hit") {
       if (salvo) { Snd.tick(G.S.hits); burst(x, y, 3, b.hue, 140, 0.5, 2); }
       else {
-        Snd.hit(G.S.hits); buzz(20); burst(x, y, 24, 48, 200, 0.6, 2.6); rings.push({ x, y, r: 4, life: 0.5, max: 0.5, hue: 48, big: true });
-        pops.push({ text: G.S.hits + "/" + G.L.need, x: x + 30, y: y - 20, life: 0.9, max: 0.9, size: 18, color: G.S.hits >= G.L.need ? "#ffd25a" : "#ffffff" });
+        if (G.S.hits === 1 && G.S.balls.filter((q) => q.state === "live").length >= 5) G.slow = 1.1; // slow motion for the convergence
+        const h = G.S.hits;
+        if (h <= 6) { Snd.hit(h); buzz(20); } else Snd.tick(h);
+        burst(x, y, h <= 6 ? 24 : 6, 48, 200, 0.6, 2.6); if (h <= 12) rings.push({ x, y, r: 4, life: 0.5, max: 0.5, hue: 48, big: true });
+        if (h <= G.L.need || h % 5 === 0 || h === G.L.star2 || h === G.L.star3) pops.push({ text: G.mode === "demo" ? String(h) : h + "/" + G.L.need, x: x + 30, y: y - 20, life: 0.9, max: 0.9, size: 18, color: h >= G.L.need ? "#ffd25a" : "#ffffff" });
         renderHUD();
       }
     } else if (type === "wall") { burst(x, y, salvo ? 3 : 16, 340, 130, 0.45, 2); if (!salvo) { Snd.wall(); shake = Math.max(shake, 6); } }
@@ -996,6 +1946,7 @@ if (typeof module !== "undefined") module.exports = ENGINE;
       pops.push({ text: "CHUTE !", x: x * 0.6, y: y * 0.6, life: 1.1, max: 1.1, size: 28, color: "#ff4766", big: true });
     } else if ((type === "over" || type === "lost") && !salvo) burst(x, y, 10, 220, 70, 0.4, 1.6);
   }
+  function addPoints(v) { if (G.mode === "defi") G.dPoints += v; else G.points += v; }
   function endFlight() {
     const S = G.S, L = G.L;
     if (L.type === "salve") return salvoEnd();
@@ -1005,62 +1956,142 @@ if (typeof module !== "undefined") module.exports = ENGINE;
   }
   function win() {
     const L = G.L, S = G.S, first = G.tries === 1;
+    if (G.mode === "demo") { pops.push({ text: S.hits + " BALLES", x: 0, y: -60, life: 2, max: 2, size: 34, color: "#ffd25a", big: true }); pops.push({ text: "1 TIR · 1 CIBLE", x: 0, y: -18, life: 2, max: 2, size: 18, color: "#ffffff", big: true }); flash = 0.4; Snd.perfect(); G.phase = "clear"; G.phaseT = -0.8; renderHUD(); return; }
     G.combo = first ? G.combo + 1 : 0;
     const extra = Math.max(0, S.hits - L.need);
-    const pts = Math.round((40 + 5 * G.n + 20 * S.hits + 30 * extra) * (first ? comboMult() : 1));
-    G.points += pts; G.cleared++; bumpScore();
+    const stars = L.star3 ? (S.hits >= L.star3 ? 3 : S.hits >= L.star2 ? 2 : 1) : first ? 3 : G.tries === 2 ? 2 : 1;
+    if (G.mode === "main") G.stars += stars;
+    const pts = Math.round((40 + 5 * G.n + (L.cascade ? 12 : 20) * S.hits + (L.cascade ? 0 : 30 * extra) + 50 * (stars - 1)) * (first ? comboMult() : 1));
+    addPoints(pts); G.cleared++; bumpScore();
+    if (G.mode === "main") { prog.cleared++; NET.levelCleared(pts); } else NET.stat("levels");
     const t = L.target;
     burst(t.x, t.y, 70, -1, 260, 1.0, 3); rings.push({ x: t.x, y: t.y, r: 6, life: 0.7, max: 0.7, hue: 48, big: true });
     flash = 0.35; Snd.win(G.combo); buzz(40);
-    const word = extra > 0 ? "INCROYABLE !" : first ? (G.combo > 1 ? "COMBO ×" + String(comboMult()).replace(".", ",") : "PARFAIT !") : G.tries === 2 ? "BRAVO !" : "ENFIN !";
+    pops.push({ text: "★".repeat(stars) + "☆".repeat(3 - stars), x: 0, y: 28, life: 1.4, max: 1.4, size: 30, color: "#ffd25a", big: true });
+    if (L.cascade) pops.push({ text: S.hits + " balles", x: 0, y: 62, life: 1.4, max: 1.4, size: 16, color: "#ffffff", big: true });
+    const word = stars === 3 && L.cascade ? "CASCADE PARFAITE !" : extra > 0 && !L.cascade ? "INCROYABLE !" : first ? (G.combo > 1 ? "COMBO ×" + String(comboMult()).replace(".", ",") : "PARFAIT !") : G.tries === 2 ? "BRAVO !" : "ENFIN !";
     pops.push({ text: word, x: 0, y: -60, life: 1.3, max: 1.3, size: 34, color: first ? "#ffd25a" : "#ffffff", big: true });
     pops.push({ text: "+" + pts, x: 0, y: -15, life: 1.2, max: 1.2, size: 22, color: "#ffffff", big: true });
     G.phase = "clear"; G.phaseT = 0; renderHUD();
   }
   function failLevel(why) {
-    G.combo = 0; G.failWhy = why; Snd.fail();
+    if (G.mode === "demo") { G.phase = "aim"; G.S = null; G.auto = { t: -0.5, dur: 1 }; return; }
+    G.combo = 0; G.failWhy = why; Snd.fail(); NET.stat("fails");
+    if (G.mode === "defi") G.dLives = Math.max(0, G.dLives - 1);
+    else { if (G.lives >= livesMax()) G.lifeAt = Date.now(); G.lives = Math.max(0, G.lives - 1); prog.fails++; tickLives(); }
     const S = G.S;
     if (S) { const b = S.balls[0]; G.ghost = b.path.slice(); if (b.state === "live") G.ghost.push({ x: b.x, y: b.y }); }
     if (why === "short") { shake = Math.max(shake, 8); pops.push({ text: "RATÉ", x: 0, y: -40, life: 1, max: 1, size: 30, color: "#ff4766", big: true }); }
     if (why === "time") { shake = 8; pops.push({ text: "TEMPS ÉCOULÉ", x: 0, y: -40, life: 1, max: 1, size: 26, color: "#ff4766", big: true }); }
-    G.phase = "failed"; G.phaseT = 0; renderHUD();
+    G.phase = "failed"; G.phaseT = 0; renderHUD(); saveProg();
   }
+  let failTimer = 0;
   function showFailCard() {
-    const L = G.L, S = G.S, cost = skipCost();
-    $("fEyebrow").textContent = "NIVEAU " + G.n + " · ESSAI " + G.tries;
-    const titles = { fall: "La balle est tombée", short: "Pas assez de balles", time: "Trop tard !" };
-    $("fTitle").textContent = titles[G.failWhy] || "Raté !";
-    $("fText").textContent = G.failWhy === "fall" ? "Elle a touché la clôture avant de traverser un point ×2. Le niveau recommence."
-      : G.failWhy === "time" ? "Le chrono est arrivé à zéro avant ton tir. Le niveau recommence."
-      : "Il fallait " + L.need + " balles dans la cible, tu en as mis " + (S ? S.hits : 0) + ". Le niveau recommence.";
-    $("bSkipPts").textContent = "Passer le niveau · " + fmt(cost) + " points";
-    $("bSkipPts").disabled = G.points < cost;
-    $("fail").hidden = false; G.paused = true; fillBanners();
+    if (G.mode === "defi" && G.dLives <= 0) return defiOver();
+    const L = G.L, S = G.S, cost = skipCost(), lv = curLives(), main = G.mode === "main";
+    $("fEyebrow").textContent = (main ? "NIVEAU " : "DÉFI · NIVEAU ") + G.n + " · ESSAI " + Math.max(1, G.tries);
+    const titles = { fall: "La balle est tombée", short: "Pas assez de balles", time: "Trop tard !", none: "Plus de vies" };
+    $("fTitle").textContent = lv <= 0 ? "Plus de vies !" : titles[G.failWhy] || "Raté !";
+    $("fText").textContent = G.failWhy === "fall" ? "Elle a touché la clôture avant de traverser un point ×2."
+      : G.failWhy === "time" ? "Le chrono est arrivé à zéro avant ton tir."
+      : G.failWhy === "short" ? "Il fallait " + L.need + " balles dans la cible, tu en as mis " + (S ? S.hits : 0) + "." : "";
+    if (lv <= 0) $("fText").textContent += " Tes vies se rechargent toutes seules, ou récupère-les tout de suite.";
+    $("fLives").innerHTML = heartsHTML(lv, curMax());
+    $("bRetry").disabled = lv <= 0;
+    $("bRetry").textContent = lv > 0 ? "RÉESSAYER (" + lv + " vie" + (lv > 1 ? "s" : "") + ")" : "RÉESSAYER";
+    $("bLifeAd").hidden = !(main && lv < livesMax());
+    $("bLifePts").hidden = !(main && lv < livesMax());
+    $("bLifePts").textContent = "Remplir les vies · " + fmt(refillCost()) + " points";
+    $("bLifePts").disabled = G.points < refillCost();
+    $("bSkipAd").hidden = !main; $("bSkipPts").hidden = !main;
+    $("bSkipPts").textContent = "Passer le niveau · " + fmt(cost) + " points"; $("bSkipPts").disabled = G.points < cost;
+    $("fail").hidden = false; G.paused = true;
+    ADS.banner($("fail").querySelector("[data-banner]"));
+    clearInterval(failTimer);
+    const upd = () => { tickLives(); const t = $("fTimer"); if (main && G.lives < livesMax()) { t.hidden = false; t.textContent = "Prochaine vie dans " + mmss(nextLife()); } else t.hidden = true;
+      if (main && G.lives > 0 && $("bRetry").disabled) showFailCard(); };
+    upd(); failTimer = setInterval(upd, 1000);
   }
-  function retry() { $("fail").hidden = true; G.paused = false; startLevel(false); }
+  function closeFail() { clearInterval(failTimer); $("fail").hidden = true; G.paused = false; }
+  function retry() { if (curLives() <= 0) return; closeFail(); startLevel(false); }
   function salvoEnd() {
     const L = G.L, n = L.balls, pct = G.S.hits / n;
     let pts = G.S.hits * 5;
     const perfect = pct >= 0.9;
-    if (perfect) { pts += 300; Snd.perfect(); flash = 0.4; } else Snd.win(0);
-    G.points += pts; G.cleared++; bumpScore();
+    if (perfect) { pts += 300; Snd.perfect(); flash = 0.4; if (G.mode === "main" && G.lives < livesMax()) { addLives(1); pops.push({ text: "+1 VIE", x: 0, y: 30, life: 1.6, max: 1.6, size: 22, color: "#ff4f9a", big: true }); } else if (G.mode === "defi" && G.dLives < 3) G.dLives++; }
+    else Snd.win(0);
+    addPoints(pts); G.cleared++; bumpScore();
+    if (G.mode === "main") { prog.cleared++; NET.levelCleared(pts); }
     pops.push({ text: Math.round(pct * 100) + " %", x: 0, y: -70, life: 1.6, max: 1.6, size: 44, color: perfect ? "#ffd25a" : "#ffffff", big: true });
     pops.push({ text: (perfect ? "PARFAIT ! +" : "+") + pts, x: 0, y: -20, life: 1.6, max: 1.6, size: 20, color: "#ffffff", big: true });
     G.phase = "clear"; G.phaseT = -0.4; renderHUD();
   }
   function advance(skipped) {
-    G.n++; save();
+    G.n++; saveProg();
+    if (G.mode === "demo") G.cleared++;
     const go = () => startLevel(true);
-    if (!skipped && Ads.real && G.cleared > 0 && G.cleared % 4 === 0) { G.paused = true; Ads.interstitial("niveau_" + G.n, () => { G.paused = false; go(); }); }
+    const every = Math.max(1, cfg().interstitialEvery || 4);
+    if (G.mode === "demo") return go();
+    if (!skipped && G.cleared > 0 && G.cleared % every === 0) { G.paused = true; ADS.interstitial("niveau_" + G.n, () => { G.paused = false; go(); }); }
     else go();
+  }
+
+  // ---------------- demo captions ----------------
+  function demoCaption() {
+    const S = G.S, L = G.L;
+    if (!S) return "Une seule balle, un seul tir. La visée passe par un point ×" + ((L.orbs[0] && L.orbs[0].m) || 2) + ".";
+    const live = S.balls.filter((b) => b.state === "live").length;
+    if (S.hits > 0) return "Le dernier point est sur un foyer : toutes ses balles convergent vers l'autre foyer. " + S.hits + " dans la cible !";
+    if (S.splits > 0) return "Chaque point multiplie les balles qui le traversent : " + live + " balles en jeu.";
+    return "La balle file vers la chaîne " + (L.mults || []).map((m) => "×" + m).join(" → ") + ".";
+  }
+
+  // ---------------- challenges ----------------
+  async function defiOver() {
+    G.phase = "done"; G.paused = true; clearInterval(failTimer); $("fail").hidden = true;
+    const ch = G.defi, reached = G.n;
+    COMMUNITY.rememberDefi(ch, reached);
+    $("dTitle").textContent = "Niveau " + reached + " atteint";
+    $("dText").textContent = fmt(G.dPoints) + " points. " + (NET.st.online && ch.id[0] !== "L" ? "Ton résultat est enregistré dans le classement du défi." : "Envoie le défi à tes amis pour comparer.");
+    $("dRes").innerHTML = "";
+    $("dover").hidden = false;
+    try { await NET.postChallengeResult(ch.id, reached, G.dPoints); } catch (e) { console.warn(e); }
+    COMMUNITY.showResults(ch.id, $("dRes"));
+  }
+  async function openDefiLink(id, s) {
+    let ch = null;
+    try { ch = await NET.getChallenge(id, s); } catch (e) { ch = null; }
+    if (!ch) ch = { id, seed: s || 1, byPseudo: "" };
+    if (!ch.seed) ch.seed = s || 1;
+    $("dcTitle").textContent = ch.byPseudo ? ch.byPseudo + " te défie !" : "Un ami te défie !";
+    $("dcRes").innerHTML = "";
+    $("defiCard").hidden = false;
+    COMMUNITY.showResults(ch.id, $("dcRes"));
+    $("bDefiGo").onclick = () => { $("defiCard").hidden = true; history.replaceState(null, "", location.pathname); startDefi(ch); };
+    $("bDefiLater").onclick = () => { $("defiCard").hidden = true; COMMUNITY.rememberDefi(ch); history.replaceState(null, "", location.pathname); };
+  }
+
+  // ---------------- daily gift ----------------
+  const GIFTS = [100, 150, 200, 300, 400, 500, 1000];
+  function maybeGift() {
+    if (cfg().dailyGift === false) return;
+    const t = C.today(), last = store.get("giftDay", "");
+    if (last === t) return;
+    const y = new Date(Date.now() - 864e5), yd = y.getFullYear() + "-" + String(y.getMonth() + 1).padStart(2, "0") + "-" + String(y.getDate()).padStart(2, "0");
+    const streak = last === yd ? (store.get("giftStreak", 0) % 7) + 1 : 1, v = GIFTS[streak - 1];
+    $("gTitle").textContent = "Jour " + streak + (streak === 7 ? " · GROS LOT" : "");
+    $("gDays").innerHTML = GIFTS.map((g, i) => '<span class="' + (i + 1 < streak ? "done" : i + 1 === streak ? "now" : "") + '">J' + (i + 1) + "<b>" + g + "</b></span>").join("");
+    $("gText").textContent = "+" + fmt(v) + " points et toutes tes vies rechargées. Reviens demain pour le jour " + ((streak % 7) + 1) + " !";
+    $("gift").hidden = false;
+    $("bGift").onclick = () => {
+      store.set("giftDay", t); store.set("giftStreak", streak);
+      G.points += v; addLives(livesMax()); saveProg(); $("gift").hidden = true; Snd.init(); Snd.perfect(); renderMenu(); toast("+" + fmt(v) + " points !");
+    };
   }
 
   // ---------------- particles ----------------
   function burst(x, y, n, hue, sp, life, size) {
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * TAU, v = sp * (0.3 + Math.random() * 0.7);
-      parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: life * (0.6 + Math.random() * 0.6), max: life, hue: hue < 0 ? Math.random() * 360 : hue + (Math.random() - 0.5) * 30, size: size * (0.6 + Math.random() * 0.8) });
-    }
+    for (let i = 0; i < n; i++) { const a = Math.random() * TAU, v = sp * (0.3 + Math.random() * 0.7); parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: life * (0.6 + Math.random() * 0.6), max: life, hue: hue < 0 ? Math.random() * 360 : hue + (Math.random() - 0.5) * 30, size: size * (0.6 + Math.random() * 0.8) }); }
     if (parts.length > 900) parts.splice(0, parts.length - 900);
   }
 
@@ -1084,36 +2115,31 @@ if (typeof module !== "undefined") module.exports = ENGINE;
   cv.addEventListener("pointerdown", (e) => {
     Snd.init();
     if (G.screen !== "play" || G.paused) return;
+    if (G.mode === "demo") { if (G.phase === "fly") G.fast = true; return; }
     try { cv.setPointerCapture(e.pointerId); } catch (_) {}
     const p = toWorld(e);
-    if (G.phase === "aim") {
-      if (G.L.type === "tir") { G.aiming = true; G.ang = Math.atan2(p.y - G.L.start.y, p.x - G.L.start.x); }
-      else { G.dragging = true; if (validSrc(p)) G.src = p; }
-    } else if (G.phase === "fly") G.fast = true;
+    if (G.phase === "aim") { if (G.L.type === "tir") { G.aiming = true; G.ang = Math.atan2(p.y - G.L.start.y, p.x - G.L.start.x); } else { G.dragging = true; placeSrc(p); } }
+    else if (G.phase === "fly") G.fast = true;
     else if (G.phase === "clear" && G.phaseT > 0.45) advance(false);
   });
   cv.addEventListener("pointermove", (e) => {
     if (G.screen !== "play" || G.paused) return;
     const p = toWorld(e);
     if (G.phase === "aim" && G.L.type === "tir" && G.aiming) G.ang = Math.atan2(p.y - G.L.start.y, p.x - G.L.start.x);
-    else if (G.dragging && validSrc(p)) G.src = p;
+    else if (G.dragging) placeSrc(p);
   });
-  const up = () => { if (G.aiming) { G.aiming = false; fire(); } G.dragging = false; G.fast = false; };
-  cv.addEventListener("pointerup", up);
+  cv.addEventListener("pointerup", () => { if (G.aiming) { G.aiming = false; fire(); } G.dragging = false; G.fast = false; });
   cv.addEventListener("pointercancel", () => { G.aiming = false; G.dragging = false; G.fast = false; });
-  // precise aiming buttons with auto-repeat
   function holdBtn(el, fn) {
-    let t1 = 0, t2 = 0;
-    const stop = () => { clearTimeout(t1); clearInterval(t2); };
+    let t1 = 0, t2 = 0; const stop = () => { clearTimeout(t1); clearInterval(t2); };
     el.addEventListener("pointerdown", (e) => { e.preventDefault(); fn(); t1 = setTimeout(() => { t2 = setInterval(fn, 45); }, 320); });
     ["pointerup", "pointerleave", "pointercancel"].forEach((k) => el.addEventListener(k, stop));
   }
   const nudge = (deg) => { if (G.phase === "aim" && !G.paused) { G.ang += (deg * Math.PI) / 180; Snd.click(); } };
-  holdBtn($("bLeft"), () => nudge(-0.2));
-  holdBtn($("bRight"), () => nudge(0.2));
+  holdBtn($("bLeft"), () => nudge(-0.2)); holdBtn($("bRight"), () => nudge(0.2));
   $("bFire").onclick = fire;
   window.addEventListener("keydown", (e) => {
-    if (G.screen !== "play" || G.paused) return;
+    if (G.screen !== "play" || G.paused || !G.L) return;
     if (G.L.type === "tir" && G.phase === "aim") {
       const d = e.shiftKey ? 2 : 0.2;
       if (e.key === "ArrowLeft" || e.key === "ArrowUp") { nudge(-d); e.preventDefault(); }
@@ -1121,60 +2147,73 @@ if (typeof module !== "undefined") module.exports = ENGINE;
       if (e.key === " " || e.key === "Enter") { fire(); e.preventDefault(); }
     } else if (G.L.type === "salve" && G.phase === "aim") {
       const d = e.shiftKey ? 10 : 2, m = { ArrowLeft: [-d, 0], ArrowRight: [d, 0], ArrowUp: [0, -d], ArrowDown: [0, d] }[e.key];
-      if (m) { const p = { x: G.src.x + m[0], y: G.src.y + m[1] }; if (validSrc(p)) G.src = p; e.preventDefault(); }
+      if (m) { placeSrc({ x: G.src.x + m[0], y: G.src.y + m[1] }); e.preventDefault(); }
       if (e.key === " " || e.key === "Enter") { fireSalvo(); e.preventDefault(); }
     } else if (G.phase === "clear" && (e.key === " " || e.key === "Enter") && G.phaseT > 0.45) advance(false);
     if (e.key === "Escape" || e.key === "p") pauseGame();
   });
 
   // ---------------- buttons ----------------
-  function pauseGame() { if (G.screen !== "play" || G.paused) return; G.paused = true; $("pTitle").textContent = "Niveau " + G.n; $("pCode").textContent = "Partie n° " + gameCode() + " · niveaux uniques à cette partie"; $("bPauseSound").textContent = "Son : " + (Snd.on ? "oui" : "non"); $("pause").hidden = false; }
+  function pauseGame() { if (G.screen !== "play" || G.paused) return; G.paused = true; $("pTitle").textContent = (G.mode === "defi" ? "Défi · niveau " : "Niveau ") + G.n; $("pCode").textContent = "Partie n° " + gameCode(curSeed()) + " · niveaux uniques à cette partie"; $("bPauseSound").textContent = "Son : " + (Snd.on ? "oui" : "non"); $("pause").hidden = false; }
   function setSound(on) { Snd.on = on; store.set("sound", on); if (on) Snd.init(); $("bSound").textContent = "Son : " + (on ? "oui" : "non"); $("bPauseSound").textContent = "Son : " + (on ? "oui" : "non"); }
-  $("bPlay").onclick = () => play(G.n);
-  $("bRestart1").onclick = () => { seed = newSeed(); store.set("seed", seed); cache.clear(); G.combo = 0; play(1); toast("Nouvelle partie n° " + gameCode()); };
+  function toMenu() { closeFail(); ["pause", "dover"].forEach((id) => ($(id).hidden = true)); G.paused = false; G.auto = null; G.mode = "main"; G.n = prog.level; G.L = null; saveProg(); showScreen("menu"); renderMenu(); }
+  $("bPlay").onclick = () => { tickLives(); play(prog.level || 1); };
+  $("bRestart1").onclick = () => { seed = newSeed(); store.set("seed", seed); prog.level = 1; G.combo = 0; play(1); toast("Nouvelle partie n° " + gameCode(seed)); };
   $("bSound").onclick = () => setSound(!Snd.on);
   $("bPauseSound").onclick = () => setSound(!Snd.on);
   $("bHow").onclick = () => { $("how").hidden = false; };
   $("bHowOk").onclick = () => { $("how").hidden = true; };
   $("bPause").onclick = pauseGame;
   $("bResume").onclick = () => { $("pause").hidden = true; G.paused = false; };
-  $("bQuit").onclick = () => { $("pause").hidden = true; G.paused = false; save(); showScreen("menu"); renderMenu(); };
+  $("bPauseComm").onclick = () => { $("pause").hidden = true; COMMUNITY.open("rank"); };
+  $("bQuit").onclick = toMenu;
+  $("bFailMenu").onclick = toMenu;
+  $("bComm").onclick = () => COMMUNITY.open("rank");
+  $("bDemo").onclick = startDemo;
+  $("bExitDemo").onclick = toMenu;
+  $("bDefi").onclick = () => COMMUNITY.open("defi");
   $("bNewsOk").onclick = () => { $("news").hidden = true; showNews(); };
   $("bSalvo").onclick = fireSalvo;
-  $("bHint").onclick = () => { G.paused = true; Ads.rewarded("voir_foyers", () => { G.paused = false; G.revealed = true; renderHUD(); toast("Foyers révélés !"); }, () => { G.paused = false; }); };
+  $("bHint").onclick = () => { G.paused = true; ADS.rewarded("voir_foyers", () => { G.paused = false; G.revealed = true; renderHUD(); toast("Foyers révélés !"); }, () => { G.paused = false; }); };
   $("bRetry").onclick = retry;
-  $("bSkipAd").onclick = () => Ads.rewarded("passer_niveau", () => { $("fail").hidden = true; G.paused = false; toast("Niveau passé !"); advance(true); });
-  $("bSkipPts").onclick = () => {
-    const cost = skipCost(); if (G.points < cost) return;
-    G.points -= cost; $("fail").hidden = true; G.paused = false; toast("Niveau passé : −" + fmt(cost) + " points"); advance(true);
-  };
-  $("bShare").onclick = async () => {
-    const text = "Je suis au niveau " + G.n + " sur Ellipso avec " + fmt(G.points) + " points. Tu fais mieux ?";
-    const url = /^https?:/.test(location.href) ? location.href.split("#")[0] : "";
-    try { if (navigator.share) { await navigator.share({ title: "Ellipso", text, url: url || undefined }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
-    try { await navigator.clipboard.writeText(text + (url ? " " + url : "")); toast("Copié, colle-le où tu veux !"); } catch (e) { toast(text); }
-  };
+  $("bLifeAd").onclick = () => ADS.rewarded("vie", () => { addLives(1); toast("+1 vie !"); showFailCard(); });
+  $("bLifePts").onclick = () => { const c = refillCost(); if (G.points < c) return; G.points -= c; addLives(livesMax()); saveProg(); toast("Vies rechargées : −" + fmt(c) + " points"); showFailCard(); };
+  $("bSkipAd").onclick = () => ADS.rewarded("passer_niveau", () => { closeFail(); toast("Niveau passé !"); advance(true); });
+  $("bSkipPts").onclick = () => { const c = skipCost(); if (G.points < c) return; G.points -= c; closeFail(); toast("Niveau passé : −" + fmt(c) + " points"); advance(true); };
+  $("bDefiShare").onclick = () => { $("dover").hidden = true; toMenu(); COMMUNITY.open("defi"); };
+  $("bDefiAgain").onclick = () => { $("dover").hidden = true; G.paused = false; startDefi(G.defi); };
+  $("bDefiMenu").onclick = toMenu;
   let installEvt = null;
   window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; $("bInstall").hidden = false; });
   $("bInstall").onclick = async () => { if (!installEvt) return; installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} installEvt = null; $("bInstall").hidden = true; };
-  document.addEventListener("visibilitychange", () => { if (document.hidden) { pauseGame(); pauseAudio(); save(); } else resumeAudio(); });
-  window.addEventListener("pagehide", save);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) { pauseGame(); pauseAudio(); saveProg(); } else { resumeAudio(); if (G.screen === "menu") renderMenu(); } });
+  window.addEventListener("pagehide", saveProg);
   window.addEventListener("resize", resize);
+  COMMUNITY.init({
+    onOpen: () => { if (G.screen === "play") G.paused = true; },
+    onClose: () => { if (G.screen === "play" && !modalsOpen()) G.paused = false; if (G.screen === "menu") renderMenu(); },
+    onPlayChallenge: (ch) => startDefi(ch),
+  });
+  NET.on("config", (c) => { if (c.adClient && window.ellipsoLoadAdsense) window.ellipsoLoadAdsense(c); if (G.screen === "menu") renderMenu(); });
+  NET.on("ads", () => { if (G.screen === "menu") renderMenu(); });
+  NET.on("status", (s) => { if (s.banned) toast("Ton compte est suspendu de la communauté."); });
 
   // ---------------- aim analysis (what the shot meets first) ----------------
   function analyseAim() {
     const L = G.L, st = L.start, ux = Math.cos(G.ang), uy = Math.sin(G.ang);
     let best = { kind: "fence", t: E.rayEllipse(st.x, st.y, ux, uy, L.rx, L.ry) };
     const consider = (kind, t, extra) => { if (t < best.t) best = Object.assign({ kind, t }, extra); };
-    L.orbs.forEach((o, i) => consider("orb", E.rayCircle(st.x, st.y, ux, uy, o.x, o.y, o.r + E.BALL_R), { i }));
+    E.orbsAt(L, G.time).forEach((o, i) => consider("orb", E.rayCircle(st.x, st.y, ux, uy, o.x, o.y, o.r + E.BALL_R), { i }));
     consider("target", E.rayCircle(st.x, st.y, ux, uy, L.target.x, L.target.y, L.tr));
     for (const h of L.holes || []) consider("hole", E.rayCircle(st.x, st.y, ux, uy, h.x, h.y, h.r));
-    for (const w of E.wallsAt(L, G.time)) consider("wall", E.raySeg(st.x, st.y, ux, uy, w));
+    for (const P of L.portals || []) { consider("portal", E.rayCircle(st.x, st.y, ux, uy, P.a.x, P.a.y, P.r)); consider("portal", E.rayCircle(st.x, st.y, ux, uy, P.b.x, P.b.y, P.r)); }
+    for (const w of E.wallsAt(L, G.time)) consider(w.bump ? "bump" : "wall", E.raySeg(st.x, st.y, ux, uy, w), w.bump ? { w } : {});
     best.x = st.x + ux * best.t; best.y = st.y + uy * best.t; best.ux = ux; best.uy = uy;
     return best;
   }
 
   // ---------------- update ----------------
+  let lifeClock = 0;
   function update(dt) {
     for (const p of parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.94; p.vy *= 0.94; p.life -= dt; }
     parts = parts.filter((p) => p.life > 0);
@@ -1183,29 +2222,40 @@ if (typeof module !== "undefined") module.exports = ENGINE;
     for (const p of pops) { p.life -= dt; if (!p.big) p.y -= 30 * dt; }
     pops = pops.filter((p) => p.life > 0);
     shake *= Math.pow(0.002, dt); flash = Math.max(0, flash - dt);
-
+    lifeClock += dt;
+    if (lifeClock > 1) { lifeClock = 0; const before = G.lives; tickLives(); if (G.screen === "menu" && !modalsOpen()) renderMenu(); else if (G.lives !== before && G.screen === "play") renderHUD(); }
     if (G.screen === "menu") { demoStep(dt); return; }
-    if (G.screen !== "play" || G.paused) return;
+    if (G.screen !== "play" || G.paused || !G.L) return;
     const L = G.L;
-    G.dispRx += (L.rx - G.dispRx) * Math.min(1, dt * 7);
-    G.fade = Math.min(1, G.fade + dt * 2.5);
-    G.phaseT += dt;
+    G.fade = Math.min(1, G.fade + dt * 2.5); G.phaseT += dt;
+    if (G.phase === "aim" && L.type === "tir" && G.auto && G.mode === "demo") {
+      G.auto.t += dt;
+      if (G.auto.t > 0) {
+        if (G.auto.from == null) G.auto.from = G.ang;
+        const u = Math.min(1, G.auto.t / G.auto.dur), e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+        G.ang = G.auto.from + (L.bestAng - G.auto.from) * e;
+        if (u >= 1 && G.auto.t > G.auto.dur + 0.5) { G.auto = null; fire(); }
+      }
+    }
     if (G.phase === "aim" && L.type === "tir") {
       const prev = aimInfo.kind; aimInfo = analyseAim(); if (aimInfo.kind !== prev) updateHelp();
+      const pvKey = G.ang.toFixed(5) + (E.moving(L) ? ":" + G.time.toFixed(2) : "");
+      if (!G.preview || G.preview.key !== pvKey) { const pv = predict(G.ang); pv.key = pvKey; const changed = !G.preview || G.preview.count !== pv.count || G.preview.chain.join() !== pv.chain.join(); G.preview = pv; if (changed) updateHelp(); }
       if (L.timer) {
         const before = Math.ceil(G.timeLeft); G.timeLeft -= dt;
         if (Math.ceil(G.timeLeft) !== before && G.timeLeft <= 3 && G.timeLeft > 0) Snd.beep();
         if (G.timeLeft <= 0) { G.tries++; G.S = null; failLevel("time"); }
       }
     }
-    const speed = G.phase === "fly" && G.fast ? 3 : 1;
-    const steps = Math.round((dt * speed) / E.DT);
-    for (let k = 0; k < steps; k++) {
-      G.time += E.DT;
-      if (G.phase === "fly") { E.stepSim(G.S, E.DT, onEvent); if (G.S.done) { endFlight(); break; } }
-    }
+    if (G.slow > 0) G.slow -= dt;
+    const scale = G.phase === "fly" ? (G.fast ? 3 : G.slow > 0 ? 0.4 : 1) : 1;
+    G.simAcc = (G.simAcc || 0) + dt * scale;
+    const steps = Math.floor(G.simAcc / E.DT); G.simAcc -= steps * E.DT;
+    if (G.phase === "fly" && G.mode === "demo" && Math.random() < 0.2) { renderHUD(); }
+    for (let k = 0; k < steps; k++) { G.time += E.DT; if (G.phase === "fly") { E.stepSim(G.S, E.DT, onEvent); if (G.S.done) { endFlight(); break; } } }
     if (G.S) for (const b of G.S.balls) { if (!b.trail) b.trail = []; if (b.state === "live") { b.trail.push({ x: b.x, y: b.y }); if (b.trail.length > 14) b.trail.shift(); } else if (b.trail.length) b.trail.shift(); }
-    if (G.phase === "clear" && G.phaseT > 1.5) advance(false);
+    if (G.phase === "fly" && G.S && Math.random() < 0.1) updateHelp();
+    if (G.phase === "clear" && G.phaseT > (G.mode === "demo" ? 1.8 : 1.5)) advance(false);
     else if (G.phase === "failed" && G.phaseT > 0.9) { G.phase = "failcard"; showFailCard(); }
   }
 
@@ -1219,37 +2269,51 @@ if (typeof module !== "undefined") module.exports = ENGINE;
     ctx.globalAlpha = 1;
   }
   const X = (v) => v * view.s;
-  function drawEllipse(rx, ry, hue, a) {
+  function drawEllipse(rx, ry, hue, a, rainbow, now) {
     ctx.save();
     const fill = ctx.createRadialGradient(0, 0, 0, 0, 0, X(ry));
     fill.addColorStop(0, "hsla(" + hue + ",80%,55%,0.07)"); fill.addColorStop(1, "hsla(" + hue + ",80%,55%,0.015)");
     ctx.fillStyle = fill; ctx.beginPath(); ctx.ellipse(0, 0, X(rx), X(ry), 0, 0, TAU); ctx.fill();
-    ctx.globalAlpha = a; ctx.lineWidth = 4; ctx.strokeStyle = "hsl(" + hue + " 95% 66%)"; ctx.shadowColor = "hsl(" + hue + " 95% 60%)"; ctx.shadowBlur = 26; ctx.stroke();
+    ctx.globalAlpha = a; ctx.lineWidth = 4;
+    if (rainbow && ctx.createConicGradient) { const cg = ctx.createConicGradient(now / 1500, 0, 0); for (let i = 0; i <= 6; i++) cg.addColorStop(i / 6, "hsl(" + i * 60 + " 95% 62%)"); ctx.strokeStyle = cg; ctx.shadowColor = "#fff"; }
+    else { ctx.strokeStyle = "hsl(" + hue + " 95% 66%)"; ctx.shadowColor = "hsl(" + hue + " 95% 60%)"; }
+    ctx.shadowBlur = 26; ctx.stroke();
     ctx.shadowBlur = 0; ctx.lineWidth = 1.3; ctx.strokeStyle = "rgba(240,252,255,0.85)"; ctx.stroke();
     ctx.restore();
   }
   function glowDot(x, y, r, color, blur) { ctx.save(); ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = blur; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.restore(); }
-  function drawTrails(balls, lineAlpha) {
+  function shapePath(shape, r, rot) {
+    ctx.beginPath();
+    if (shape === "star") { for (let i = 0; i < 10; i++) { const a = rot + (i * Math.PI) / 5 - Math.PI / 2, rr = i % 2 ? r * 0.45 : r; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.closePath(); }
+    else if (shape === "diamond") { ctx.moveTo(0, -r * 1.2); ctx.lineTo(r * 0.75, 0); ctx.lineTo(0, r * 1.2); ctx.lineTo(-r * 0.75, 0); ctx.closePath(); }
+    else if (shape === "heart") { const s = r * 0.9; ctx.moveTo(0, s * 0.9); ctx.bezierCurveTo(-s * 1.6, -s * 0.2, -s * 0.6, -s * 1.3, 0, -s * 0.45); ctx.bezierCurveTo(s * 0.6, -s * 1.3, s * 1.6, -s * 0.2, 0, s * 0.9); }
+    else if (shape === "leaf") { ctx.ellipse(0, 0, r * 1.3, r * 0.6, rot, 0, TAU); }
+    else if (shape === "flame") { ctx.moveTo(0, -r * 1.5); ctx.quadraticCurveTo(r, -r * 0.2, r * 0.6, r * 0.6); ctx.quadraticCurveTo(0, r * 1.2, -r * 0.6, r * 0.6); ctx.quadraticCurveTo(-r, -r * 0.2, 0, -r * 1.5); }
+    else ctx.arc(0, 0, r, 0, TAU);
+  }
+  function drawTrails(balls, lineAlpha, shape, now) {
     ctx.save(); ctx.globalCompositeOperation = "lighter";
     if (lineAlpha > 0) for (const b of balls) {
       if (!b.path) continue;
-      ctx.strokeStyle = "hsla(" + b.hue + ",95%,62%," + lineAlpha + ")"; ctx.lineWidth = 1.3;
-      ctx.beginPath(); ctx.moveTo(X(b.path[0].x), X(b.path[0].y));
-      for (let k = 1; k < b.path.length; k++) ctx.lineTo(X(b.path[k].x), X(b.path[k].y));
-      if (b.state === "live") ctx.lineTo(X(b.x), X(b.y));
+      ctx.strokeStyle = "hsla(" + b.hue + ",95%,62%," + lineAlpha + ")"; ctx.lineWidth = 1.3; ctx.beginPath();
+      let pen = false;
+      for (const p of b.path) { if (isNaN(p.x)) { pen = false; continue; } if (pen) ctx.lineTo(X(p.x), X(p.y)); else { ctx.moveTo(X(p.x), X(p.y)); pen = true; } }
+      if (b.state === "live" && pen) ctx.lineTo(X(b.x), X(b.y));
       ctx.stroke();
     }
     for (const b of balls) {
       const t = b.trail; if (!t || t.length < 2) continue;
       for (let k = 1; k < t.length; k++) {
-        const u = k / t.length;
-        ctx.strokeStyle = "hsla(" + b.hue + ",100%,65%," + u * 0.9 + ")"; ctx.lineWidth = Math.max(1, X(E.BALL_R) * 1.6 * u);
+        if (Math.hypot(t[k].x - t[k - 1].x, t[k].y - t[k - 1].y) > 40) continue; // portal jump
+        const u = k / t.length; ctx.strokeStyle = "hsla(" + b.hue + ",100%,65%," + u * 0.9 + ")"; ctx.lineWidth = Math.max(1, X(E.BALL_R) * 1.6 * u);
         ctx.beginPath(); ctx.moveTo(X(t[k - 1].x), X(t[k - 1].y)); ctx.lineTo(X(t[k].x), X(t[k].y)); ctx.stroke();
       }
     }
     ctx.restore();
     for (const b of balls) if (b.state === "live") {
-      glowDot(X(b.x), X(b.y), Math.max(3, X(E.BALL_R) * 1.15), "hsl(" + b.hue + " 100% 75%)", 14);
+      const col = "hsl(" + b.hue + " 100% 72%)", r = Math.max(3, X(E.BALL_R) * 1.2);
+      if (shape && shape !== "dot") { ctx.save(); ctx.translate(X(b.x), X(b.y)); ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 12; shapePath(shape, r * 1.4, now / 300 + b.hue); ctx.fill(); ctx.restore(); continue; }
+      glowDot(X(b.x), X(b.y), r, col, 14);
       ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(X(b.x), X(b.y), Math.max(1.5, X(E.BALL_R) * 0.55), 0, TAU); ctx.fill();
     }
   }
@@ -1262,33 +2326,36 @@ if (typeof module !== "undefined") module.exports = ENGINE;
       const u = p.life / p.max, inT = Math.min(1, (p.max - p.life) / 0.18), sc = p.big ? 0.6 + 0.4 * easeBack(inT) : 1;
       ctx.save(); ctx.globalAlpha = Math.min(1, u * 2.2); ctx.translate(X(p.x), X(p.y)); ctx.scale(sc, sc);
       ctx.font = "700 " + p.size + "px Unbounded, 'Arial Black', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.shadowColor = p.color; ctx.shadowBlur = 18; ctx.fillStyle = p.color; ctx.fillText(p.text, 0, 0);
-      ctx.restore();
+      ctx.shadowColor = p.color; ctx.shadowBlur = 18; ctx.fillStyle = p.color; ctx.fillText(p.text, 0, 0); ctx.restore();
     }
   }
   function easeBack(t) { const c = 1.9; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); }
+  const ORB_COL = { 2: "#b9a6ff", 3: "#6fe6ff", 4: "#ffd25a", 5: "#ff4f9a", 6: "#3fe0c5" };
   function drawOrb(o, i, now, lit) {
-    const r = Math.max(9, X(o.r)), pul = 1 + 0.08 * Math.sin(now / 200 + i * 2);
+    const r = Math.max(9, X(o.r)), pul = 1 + 0.08 * Math.sin(now / 200 + i * 2), m = o.m || 2, col = ORB_COL[m] || "#b9a6ff";
     ctx.save(); ctx.translate(X(o.x), X(o.y));
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.4); g.addColorStop(0, lit ? "rgba(120,255,190,0.45)" : "rgba(160,130,255,0.4)"); g.addColorStop(1, "rgba(160,130,255,0)");
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.4); g.addColorStop(0, lit ? "rgba(120,255,190,0.45)" : col + "66"); g.addColorStop(1, col + "00");
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r * 2.4, 0, TAU); ctx.fill();
-    ctx.strokeStyle = lit ? "#78ffbe" : "#b9a6ff"; ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 16; ctx.lineWidth = 2.5;
+    ctx.strokeStyle = lit ? "#78ffbe" : col; ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 16; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.arc(0, 0, r * pul, 0, TAU); ctx.stroke();
     ctx.rotate(-now / 900); ctx.setLineDash([3, 4]); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, 0, r * pul + 5, 0, TAU); ctx.stroke(); ctx.setLineDash([]); ctx.rotate(now / 900);
     ctx.shadowBlur = 0; ctx.fillStyle = "#ffffff"; ctx.font = "700 " + Math.max(10, Math.round(r * 0.95)) + "px Unbounded, 'Arial Black', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("×2", 0, 1);
+    ctx.fillText("×" + m, 0, 1); ctx.restore();
+  }
+  function drawFocusMark(f, label) {
+    ctx.save(); ctx.strokeStyle = "rgba(255,210,90,0.85)"; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(X(f.x), X(f.y), 6, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(X(f.x) - 10, X(f.y)); ctx.lineTo(X(f.x) - 3, X(f.y)); ctx.moveTo(X(f.x) + 3, X(f.y)); ctx.lineTo(X(f.x) + 10, X(f.y));
+    ctx.moveTo(X(f.x), X(f.y) - 10); ctx.lineTo(X(f.x), X(f.y) - 3); ctx.moveTo(X(f.x), X(f.y) + 3); ctx.lineTo(X(f.x), X(f.y) + 10); ctx.stroke();
+    if (label) { ctx.fillStyle = "rgba(255,210,90,0.95)"; ctx.font = "600 11px Outfit, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText("FOYER", X(f.x) + 22, X(f.y)); }
     ctx.restore();
   }
   function drawLevel(now) {
-    const L = G.L;
-    drawEllipse(G.dispRx, L.ry, G.hue, 1);
-    ctx.globalAlpha = G.fade;
-    const F = E.foci(L.rx, L.ry), showF = !L.hidden || G.revealed || G.phase === "clear";
-    if (showF) F.forEach((f) => {
-      if (Math.abs(f.y - L.target.y) < 0.01) return;
-      ctx.strokeStyle = "rgba(255,210,90,0.75)"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(X(f.x), X(f.y), 6, 0, TAU); ctx.stroke();
-      ctx.fillStyle = "rgba(255,210,90,0.9)"; ctx.font = "600 11px Outfit, sans-serif"; ctx.textAlign = "left"; ctx.fillText("FOYER", X(f.x) + 22, X(f.y) + 4);
-    });
+    const L = G.L, salve = L.type === "salve", th = salve ? THEMES[L.theme] || THEMES.or : null;
+    drawEllipse(L.rx, L.ry, G.hue, 1, th && th.hue < 0, now);
+    const F = E.foci(L.rx, L.ry), showF = !L.hidden || G.revealed;
+    // the free focus (the target sits on the other one); never drawn on hidden-foci levels
+    if (showF) F.forEach((f) => { if (Math.abs(f.y - L.target.y) < 0.5 && Math.abs(f.x - L.target.x) < 0.5) return; if (!salve && L.orbs.some((o) => o.focus && Math.hypot(o.x - f.x, o.y - f.y) < 1)) return; drawFocusMark(f, true); });
     for (const h of L.holes || []) {
       ctx.save(); ctx.translate(X(h.x), X(h.y)); const r = X(h.r);
       const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.6); g.addColorStop(0, "#000"); g.addColorStop(0.6, "rgba(20,0,40,0.95)"); g.addColorStop(1, "rgba(120,60,255,0)");
@@ -1297,10 +2364,18 @@ if (typeof module !== "undefined") module.exports = ENGINE;
       for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(0, 0, r * (0.55 + k * 0.22), k, k + 3.6); ctx.stroke(); }
       ctx.restore();
     }
+    for (const P of L.portals || []) [[P.a, "#4fb6ff"], [P.b, "#ff9a3d"]].forEach(([q, col]) => {
+      ctx.save(); ctx.translate(X(q.x), X(q.y)); const r = Math.max(9, X(P.r));
+      ctx.strokeStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 16; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(0, 0, r, r * 1.25, 0, 0, TAU); ctx.stroke();
+      ctx.rotate(now / 300); ctx.lineWidth = 1.5; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(0, 0, r * 0.6, k * 2.1, k * 2.1 + 1.2); ctx.stroke(); }
+      ctx.restore();
+    });
     for (const w of E.wallsAt(L, G.time)) {
-      ctx.save(); ctx.lineCap = "round"; ctx.strokeStyle = w.slide ? "#ff8a3d" : "#ff4f9a"; ctx.shadowColor = w.slide ? "#ff7a20" : "#ff2f7d"; ctx.shadowBlur = 16; ctx.lineWidth = Math.max(4, X(E.WALL_W));
+      const col = w.bump ? "#ffe066" : w.slide ? "#ff8a3d" : "#ff4f9a", glow = w.bump ? "#ffd21a" : w.slide ? "#ff7a20" : "#ff2f7d";
+      ctx.save(); ctx.lineCap = "round"; ctx.strokeStyle = col; ctx.shadowColor = glow; ctx.shadowBlur = 16; ctx.lineWidth = Math.max(4, X(E.WALL_W));
       ctx.beginPath(); ctx.moveTo(X(w.x1), X(w.y1)); ctx.lineTo(X(w.x2), X(w.y2)); ctx.stroke();
-      ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(255,230,240,0.9)"; ctx.lineWidth = 1.2; ctx.stroke(); ctx.restore();
+      ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(255,240,240,0.9)"; ctx.lineWidth = 1.2; if (w.bump) ctx.setLineDash([4, 4]); ctx.stroke(); ctx.restore();
       if (w.rot) glowDot(X(w.rot.cx), X(w.rot.cy), 4, "#ffffff", 10);
     }
     for (const g of L.gems || []) {
@@ -1308,8 +2383,7 @@ if (typeof module !== "undefined") module.exports = ENGINE;
       const bob = Math.sin(now / 300 + g.x) * 2, r = Math.max(6, X(g.r));
       ctx.save(); ctx.translate(X(g.x), X(g.y) + bob); ctx.rotate(now / 900);
       ctx.fillStyle = "#3fe0c5"; ctx.shadowColor = "#3fe0c5"; ctx.shadowBlur = 16;
-      ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r * 0.7, 0); ctx.lineTo(0, r); ctx.lineTo(-r * 0.7, 0); ctx.closePath(); ctx.fill();
-      ctx.restore();
+      ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r * 0.7, 0); ctx.lineTo(0, r); ctx.lineTo(-r * 0.7, 0); ctx.closePath(); ctx.fill(); ctx.restore();
     }
     const t = L.target, pulse = 1 + 0.1 * Math.sin(now / 220), tr = Math.max(9, X(L.tr));
     ctx.save(); ctx.translate(X(t.x), X(t.y));
@@ -1319,12 +2393,13 @@ if (typeof module !== "undefined") module.exports = ENGINE;
     ctx.beginPath(); ctx.arc(0, 0, tr * pulse + 4, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
     ctx.beginPath(); ctx.arc(0, 0, tr * 0.55, 0, TAU); ctx.stroke(); ctx.fillStyle = "#fff4cc"; ctx.beginPath(); ctx.arc(0, 0, 3, 0, TAU); ctx.fill();
     ctx.restore();
-    // orbs (a used one stays lit while balls fly)
-    const used = G.S ? G.S.balls.reduce((m, b) => m | (b.state === "split" ? 0 : b.used), 0) : 0;
-    L.orbs.forEach((o, i) => drawOrb(o, i, now, (G.phase === "aim" && aimInfo.kind === "orb" && aimInfo.i === i) || (used & (1 << i))));
+    const orbs = E.orbsAt(L, G.time), used = G.S ? G.S.balls.reduce((m, b) => m | (b.state === "split" ? 0 : b.used), 0) : 0;
+    const pvUsed = G.phase === "aim" && G.preview ? G.preview.S.balls.reduce((m, b) => m | b.used, 0) : 0;
+    orbs.forEach((o, i) => drawOrb(o, i, now, (pvUsed & (1 << i)) || (used & (1 << i))));
     if (G.ghost && G.phase === "aim") {
-      ctx.save(); ctx.setLineDash([3, 6]); ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.lineWidth = 1.2; ctx.beginPath();
-      ctx.moveTo(X(G.ghost[0].x), X(G.ghost[0].y)); for (const p of G.ghost) ctx.lineTo(X(p.x), X(p.y)); ctx.stroke(); ctx.restore();
+      ctx.save(); ctx.setLineDash([3, 6]); ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.lineWidth = 1.2; ctx.beginPath(); let pen = false;
+      for (const p of G.ghost) { if (isNaN(p.x)) { pen = false; continue; } if (pen) ctx.lineTo(X(p.x), X(p.y)); else { ctx.moveTo(X(p.x), X(p.y)); pen = true; } }
+      ctx.stroke(); ctx.restore();
     }
     if (L.type === "tir") {
       const st = L.start;
@@ -1335,43 +2410,54 @@ if (typeof module !== "undefined") module.exports = ENGINE;
           const u = Math.max(0, G.timeLeft / L.timer);
           ctx.save(); ctx.strokeStyle = u < 0.35 ? "#ff4766" : "#ffd25a"; ctx.lineWidth = 3; ctx.lineCap = "round";
           ctx.beginPath(); ctx.arc(X(st.x), X(st.y), 18, -Math.PI / 2, -Math.PI / 2 + TAU * u); ctx.stroke();
-          ctx.fillStyle = ctx.strokeStyle; ctx.font = "700 12px Unbounded, sans-serif"; ctx.textAlign = "center"; ctx.fillText(Math.ceil(G.timeLeft) + " s", X(st.x), X(st.y) - 26);
-          ctx.restore();
+          ctx.fillStyle = ctx.strokeStyle; ctx.font = "700 12px Unbounded, sans-serif"; ctx.textAlign = "center"; ctx.fillText(Math.ceil(G.timeLeft) + " s", X(st.x), X(st.y) - 26); ctx.restore();
         } else { ctx.strokeStyle = "rgba(255,255,255," + (0.25 + 0.2 * Math.sin(now / 250)) + ")"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(X(st.x), X(st.y), 15 + 3 * Math.sin(now / 250), 0, TAU); ctx.stroke(); }
       } else { ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.beginPath(); ctx.arc(X(st.x), X(st.y), 3, 0, TAU); ctx.fill(); }
     } else if (G.phase === "aim") {
-      const ok = validSrc(G.src), c = ok ? "#ffffff" : "#ff4766";
+      const ok = G.locked || validSrc(G.src), c = G.locked ? "#78ffbe" : ok ? "#ffffff" : "#ff4766";
       glowDot(X(G.src.x), X(G.src.y), 7, c, 18);
-      ctx.save(); ctx.strokeStyle = c; ctx.globalAlpha = 0.4;
+      ctx.save(); ctx.strokeStyle = c; ctx.globalAlpha = G.locked ? 0.9 : 0.4;
       for (let i = 0; i < 12; i++) { const an = (i / 12) * TAU + now / 2000; ctx.beginPath(); ctx.moveTo(X(G.src.x) + Math.cos(an) * 12, X(G.src.y) + Math.sin(an) * 12); ctx.lineTo(X(G.src.x) + Math.cos(an) * 26, X(G.src.y) + Math.sin(an) * 26); ctx.stroke(); }
+      if (G.locked) { ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X(G.src.x), X(G.src.y), 18 + 2 * Math.sin(now / 150), 0, TAU); ctx.stroke(); }
       ctx.restore();
     }
-    ctx.globalAlpha = 1;
-    if (G.S) drawTrails(G.S.balls, L.type === "salve" ? 0.16 : 0.3);
+    if (G.S) drawTrails(G.S.balls, salve ? 0.16 : 0.3, th ? th.shape : null, now);
+    for (const f of L.fog || []) {
+      const g = ctx.createRadialGradient(X(f.x), X(f.y), 0, X(f.x), X(f.y), X(f.r));
+      g.addColorStop(0, "rgba(14,20,40,0.97)"); g.addColorStop(0.7, "rgba(14,20,40,0.9)"); g.addColorStop(1, "rgba(14,20,40,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(X(f.x), X(f.y), X(f.r), 0, TAU); ctx.fill();
+      ctx.save(); ctx.globalAlpha = 0.25 + 0.1 * Math.sin(now / 700 + f.x); ctx.strokeStyle = "#9fb4d8"; ctx.setLineDash([2, 8]); ctx.beginPath(); ctx.arc(X(f.x), X(f.y), X(f.r) * 0.8, now / 3000, now / 3000 + 5); ctx.stroke(); ctx.restore();
+    }
   }
   function drawAim(st, L, now) {
     if (!isFinite(aimInfo.x)) aimInfo = analyseAim();
-    const a = aimInfo, good = a.kind === "orb", col = good ? "120,255,190" : a.kind === "target" ? "255,210,90" : "255,90,110";
+    const a = aimInfo, good = a.kind === "orb", neutral = a.kind === "bump" || a.kind === "portal";
+    const col = good ? "120,255,190" : neutral ? "255,224,102" : a.kind === "target" ? "255,210,90" : "255,90,110";
     ctx.save();
     const g = ctx.createLinearGradient(X(st.x), X(st.y), X(a.x), X(a.y)); g.addColorStop(0, "rgba(" + col + ",0.95)"); g.addColorStop(1, "rgba(" + col + ",0.35)");
     ctx.strokeStyle = g; ctx.lineWidth = 2; ctx.setLineDash([2, 7]); ctx.lineCap = "round"; ctx.lineDashOffset = -now / 40;
     ctx.beginPath(); ctx.moveTo(X(st.x), X(st.y)); ctx.lineTo(X(a.x), X(a.y)); ctx.stroke(); ctx.setLineDash([]);
-    if (good) {
-      // preview the two duplicated directions (short stubs)
-      const o = L.orbs[a.i], base = Math.atan2(a.uy, a.ux), len = L.n <= 4 ? 120 : 55;
-      ctx.strokeStyle = "rgba(120,255,190,0.35)"; ctx.setLineDash([2, 6]);
-      for (const s of [-1, 1]) { const an = base + s * L.spread; ctx.beginPath(); ctx.moveTo(X(o.x), X(o.y)); ctx.lineTo(X(o.x + Math.cos(an) * len), X(o.y + Math.sin(an) * len)); ctx.stroke(); }
-    } else if (a.kind !== "target") {
+    if (good && G.preview && G.preview.S.splits) {
+      // assisted aim: every predicted ball path until it reaches the fence
+      ctx.setLineDash([2, 6]); ctx.lineDashOffset = -now / 40; ctx.lineWidth = 1.6;
+      for (const b of G.preview.S.balls) {
+        if (!b.gen) continue;
+        ctx.strokeStyle = "rgba(120,255,190," + Math.max(0.18, 0.5 - b.gen * 0.08) + ")"; ctx.beginPath(); let pen = false;
+        for (const p of b.path) { if (isNaN(p.x)) { pen = false; continue; } if (pen) ctx.lineTo(X(p.x), X(p.y)); else { ctx.moveTo(X(p.x), X(p.y)); pen = true; } }
+        if (b.state === "live") ctx.lineTo(X(b.x), X(b.y));
+        ctx.stroke();
+      }
+    } else if (!neutral && a.kind !== "target") {
       ctx.strokeStyle = "#ff4766"; ctx.lineWidth = 2.5; const k = 6;
       ctx.beginPath(); ctx.moveTo(X(a.x) - k, X(a.y) - k); ctx.lineTo(X(a.x) + k, X(a.y) + k); ctx.moveTo(X(a.x) + k, X(a.y) - k); ctx.lineTo(X(a.x) - k, X(a.y) + k); ctx.stroke();
     }
     ctx.restore();
   }
-  function drawDemo() {
-    drawEllipse(D.rx, D.ry, 192, 0.9);
-    E.foci(D.rx, D.ry).forEach((f) => { ctx.strokeStyle = "rgba(255,210,90,0.8)"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(X(f.x), X(f.y), 7, 0, TAU); ctx.stroke(); });
+  function drawDemo(now) {
+    drawEllipse(D.rx, D.ry, 192, 0.9, false, now);
+    E.foci(D.rx, D.ry).forEach((f) => drawFocusMark(f, false));
     if (!demo.S) return;
-    ctx.globalAlpha = Math.max(0, Math.min(1, (3.4 - demo.t) / 0.5)); drawTrails(demo.S.balls, 0); ctx.globalAlpha = 1;
+    ctx.globalAlpha = Math.max(0, Math.min(1, (3.4 - demo.t) / 0.5)); drawTrails(demo.S.balls, 0, null, now); ctx.globalAlpha = 1;
   }
 
   let last = performance.now();
@@ -1382,15 +2468,25 @@ if (typeof module !== "undefined") module.exports = ENGINE;
     drawBG(now);
     ctx.save();
     ctx.translate(view.cx + (Math.random() - 0.5) * shake, view.cy + (Math.random() - 0.5) * shake);
-    try { if (G.screen === "menu") drawDemo(); else if (G.L) drawLevel(now); drawFx(); } catch (err) { console.error(err); }
+    // level intro: the whole table (ellipse, foci, target, x2 points) scales in together, so nothing is ever out of place
+    if (G.screen === "play" && G.fade < 1) { const k = 0.92 + 0.08 * (1 - Math.pow(1 - G.fade, 3)); ctx.scale(k, k); ctx.globalAlpha = Math.min(1, G.fade * 1.6); }
+    try { if (G.screen === "menu") drawDemo(now); else if (G.L) drawLevel(now); ctx.globalAlpha = 1; drawFx(); } catch (err) { console.error(err); }
     ctx.restore();
     if (flash > 0) { ctx.fillStyle = "rgba(255,245,220," + flash * 0.5 + ")"; ctx.fillRect(0, 0, W, H); }
     requestAnimationFrame(frame);
   }
 
-  resize(); renderMenu(); showScreen("menu");
+  // ---------------- boot ----------------
+  tickLives(); resize(); renderMenu(); showScreen("menu");
   requestAnimationFrame(frame);
-  window.__ellipso = { G, E, getLevel, fire, play, advance, retry };
+  NET.on("ready", () => {
+    const q = new URLSearchParams(location.search), id = q.get("defi");
+    if (id) openDefiLink(id, parseInt(q.get("s"), 10) || 0);
+    else maybeGift();
+    if (G.screen === "menu") renderMenu();
+  });
+  NET.init();
+  window.__ellipso = { G, E, Gen, fire, play, advance, retry, startDefi, prog, placeSrc, startDemo, predict };
 })();
 
 </script>

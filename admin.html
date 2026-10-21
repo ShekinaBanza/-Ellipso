@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Ellipso Admin</title>
+<meta name="theme-color" content="#060a16">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Outfit:wght@400;600;700&display=swap">
+<style>
+/* Layout: operations console. Dense, scannable panels on a deep navy ground; the game's cyan and gold mark live data and actions. */
+:root {
+  --ink: #060a16; --panel: #0d1530; --panel2: #111b3a; --line: #22325c; --fg: #e9f0ff; --muted: #93a2c8;
+  --cyan: #6fe6ff; --gold: #ffd25a; --pink: #ff4f9a; --mint: #3fe0c5; --red: #ff4766;
+  --display: "Unbounded", "Arial Black", system-ui, sans-serif; --body: "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--ink); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+.adm { max-width: 1200px; margin: 0 auto; padding-block: 16px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; gap: 10px; align-items: center; }
+.brand img { border-radius: 9px; }
+.brand b { font-family: var(--display); font-size: 18px; display: block; line-height: 1.1; }
+.brand small { color: var(--muted); }
+.who { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 14px; flex-wrap: wrap; }
+h1, h2 { font-family: var(--display); margin: 0; text-wrap: balance; }
+h1 { font-size: 22px; } h2 { font-size: 15px; letter-spacing: 0.02em; display: flex; gap: 8px; align-items: center; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.panel.narrow { max-width: 440px; width: 100%; justify-self: center; margin-top: 8vh; }
+.panel.narrowish { max-width: 620px; }
+.panel p { margin: 0; color: var(--muted); }
+code { background: rgba(255, 255, 255, 0.07); padding: 1px 6px; border-radius: 6px; font-size: 0.92em; }
+.uid { font-family: ui-monospace, Menlo, monospace; color: var(--gold) !important; word-break: break-all; user-select: all; background: rgba(255, 210, 90, 0.08); padding: 8px 10px; border-radius: 10px; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--ink); padding-block: 6px; }
+.tabs button { font: 600 14px var(--body); color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px; cursor: pointer; }
+.tabs button.on { color: var(--ink); background: var(--cyan); border-color: var(--cyan); }
+.badge { background: var(--red); color: #fff; border-radius: 999px; padding: 0 7px; font-size: 12px; margin-left: 4px; }
+.page { display: grid; gap: 16px; }
+.grid2 { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 900px) { .grid2 { grid-template-columns: 1.4fr 1fr; } }
+.kpis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 4px; }
+.kpi span { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.kpi b { font-family: var(--display); font-size: 26px; font-variant-numeric: tabular-nums; }
+.kpi small { color: var(--muted); }
+.kpi.live b { color: var(--mint); }
+.live { background: rgba(63, 224, 197, 0.15); color: var(--mint); border-radius: 999px; padding: 2px 10px; font-size: 13px; font-family: var(--body); font-weight: 700; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--muted); font-size: 10px; font-family: var(--body); }
+.legend { display: flex; gap: 14px; align-items: center; font-size: 13px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-right: 5px; vertical-align: -1px; }
+.c1 { background: var(--cyan); } .c2 { background: var(--gold); }
+.list, .bars, .msgs { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: var(--panel2); }
+.list li small { color: var(--muted); margin-left: auto; text-align: right; }
+.muted { color: var(--muted); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); display: inline-block; flex: none; }
+.dot.on { background: var(--mint); box-shadow: 0 0 8px var(--mint); }
+.av { width: 28px; height: 28px; border-radius: 50%; display: inline-grid; place-items: center; font-weight: 700; color: var(--ink); font-size: 13px; flex: none; }
+.bars li { display: grid; grid-template-columns: 140px minmax(0, 1fr) 46px; gap: 10px; align-items: center; font-size: 14px; }
+.bars .track { height: 10px; background: var(--panel2); border-radius: 999px; overflow: hidden; }
+.bars .track i { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--pink)); border-radius: 999px; }
+.bars b { text-align: right; font-variant-numeric: tabular-nums; }
+.bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.bar h2 { margin-right: auto; }
+.tablewrap { overflow-x: auto; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tbl th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.tbl td { padding: 8px; border-bottom: 1px solid rgba(34, 50, 92, 0.6); vertical-align: middle; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tbl tr.banned td { opacity: 0.55; }
+.tag { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; margin-left: 6px; }
+.tag.red { background: rgba(255, 71, 102, 0.18); color: var(--red); } .tag.gold { background: rgba(255, 210, 90, 0.18); color: var(--gold); }
+.btn { font: 600 13px var(--body); color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 7px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--cyan); }
+.btn.primary { background: var(--cyan); color: var(--ink); border-color: var(--cyan); padding: 10px 16px; font-size: 14px; }
+.btn.danger { color: var(--red); border-color: rgba(255, 71, 102, 0.5); }
+.btn.ghost { background: transparent; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn:focus-visible, .tabs button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.acts { display: flex; gap: 6px; }
+.form { display: grid; gap: 8px; }
+.form label { font-size: 13px; color: var(--muted); font-weight: 600; }
+.form .switch { display: flex; gap: 8px; align-items: center; color: var(--fg); font-weight: 600; }
+input, select { font: inherit; color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; min-width: 0; }
+input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--cyan); }
+input:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+fieldset { border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 6px; padding: 10px 12px; }
+legend { color: var(--muted); font-size: 13px; font-weight: 600; padding: 0 4px; }
+fieldset label { display: flex; gap: 8px; align-items: center; color: var(--fg) !important; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row2 > div { display: grid; gap: 6px; }
+.hint { font-size: 12.5px; }
+.err { color: var(--red) !important; min-height: 1em; }
+.preview { border-radius: 12px; overflow: hidden; background: #000; max-height: 220px; display: grid; place-items: center; }
+.preview:empty { display: none; }
+.preview img, .preview video { max-width: 100%; max-height: 220px; display: block; }
+.adlist { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.adcard { background: var(--panel2); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: grid; }
+.adcard .media { aspect-ratio: 16 / 9; background: #000; display: grid; place-items: center; overflow: hidden; }
+.adcard .media img, .adcard .media video { width: 100%; height: 100%; object-fit: cover; }
+.adcard .info { padding: 10px 12px; display: grid; gap: 6px; }
+.adcard .stats { display: flex; gap: 12px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.adcard .stats b { color: var(--fg); }
+.adcard.off { opacity: 0.55; }
+.msgs li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px; border-radius: 12px; background: var(--panel2); }
+.msgs .txt { overflow-wrap: anywhere; }
+.msgs .meta { font-size: 12px; color: var(--muted); }
+.msgs .meta b { color: var(--fg); }
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--line); padding: 10px 16px; border-radius: 999px; font-weight: 600; z-index: 20; }
+@media (max-width: 560px) { .bars li { grid-template-columns: 96px minmax(0, 1fr) 40px; } .row2 { grid-template-columns: 1fr; } }
+
+</style>
+</head>
+<body>
+<main class="adm">
+  <header class="top">
+    <div class="brand"><img src="icons/icon-192.png" alt="" width="34" height="34"><div><b>Ellipso</b><small>Espace admin</small></div></div>
+    <div class="who" id="who" hidden><span id="whoMail"></span><button id="bOut" class="btn ghost">Déconnexion</button></div>
+  </header>
+
+  <section id="setup" class="panel narrow" hidden>
+    <h1>Serveur non configuré</h1>
+    <p>Le fichier <code>firebase-config.js</code> est encore vide. Suis le guide <code>LISEZMOI.md</code> (partie « Créer le serveur Firebase »), colle ta configuration dans ce fichier, puis recharge cette page.</p>
+  </section>
+
+  <section id="login" class="panel narrow" hidden>
+    <h1>Connexion admin</h1>
+    <form id="loginForm" class="form">
+      <label for="lMail">E-mail</label><input id="lMail" type="email" autocomplete="username" required>
+      <label for="lPass">Mot de passe</label><input id="lPass" type="password" autocomplete="current-password" required>
+      <button class="btn primary" type="submit">Se connecter</button>
+      <p class="err" id="lErr"></p>
+    </form>
+  </section>
+
+  <section id="notAdmin" class="panel narrow" hidden>
+    <h1>Accès refusé</h1>
+    <p>Ce compte n'est pas encore administrateur. Dans la console Firebase, ouvre <b>Firestore</b>, crée la collection <code>admins</code> et ajoute un document dont l'identifiant est :</p>
+    <p class="uid" id="naUid"></p>
+    <p>Ensuite, recharge cette page.</p>
+  </section>
+
+  <div id="app" hidden>
+    <nav class="tabs" id="tabs">
+      <button data-t="dash" class="on">Tableau de bord</button>
+      <button data-t="users">Joueurs</button>
+      <button data-t="chat">Chat</button>
+      <button data-t="reports">Signalements <span class="badge" id="repCount" hidden></span></button>
+      <button data-t="ads">Publicités</button>
+      <button data-t="defis">Défis</button>
+      <button data-t="settings">Réglages</button>
+    </nav>
+
+    <section data-p="dash" class="page">
+      <div class="kpis" id="kpis"></div>
+      <div class="grid2">
+        <div class="panel"><h2>Activité des 14 derniers jours</h2><div id="chart" class="chart"></div><p class="legend"><i class="c1"></i>Niveaux réussis <i class="c2"></i>Nouveaux joueurs</p></div>
+        <div class="panel"><h2>En ligne maintenant <span class="live" id="onlineN">0</span></h2><ul class="list" id="onlineList"><li class="muted">Personne pour l'instant.</li></ul></div>
+      </div>
+      <div class="grid2">
+        <div class="panel"><h2>Pays des joueurs</h2><ul class="bars" id="countries"></ul></div>
+        <div class="panel"><h2>Appareils</h2><ul class="bars" id="devices"></ul></div>
+      </div>
+    </section>
+
+    <section data-p="users" class="page" hidden>
+      <div class="panel">
+        <div class="bar"><h2>Joueurs</h2><input id="uSearch" placeholder="Rechercher un pseudo…" aria-label="Rechercher"><select id="uFilter" aria-label="Filtre"><option value="all">Tous</option><option value="online">En ligne</option><option value="banned">Suspendus</option><option value="muted">Muets</option></select></div>
+        <div class="tablewrap"><table class="tbl"><thead><tr><th></th><th>Pseudo</th><th>Pays</th><th>Niveau</th><th>Record</th><th>Points</th><th>Appareil</th><th>Dernière visite</th><th>Actions</th></tr></thead><tbody id="uBody"></tbody></table></div>
+        <button class="btn ghost" id="uMore">Charger plus</button>
+      </div>
+    </section>
+
+    <section data-p="chat" class="page" hidden>
+      <div class="panel">
+        <div class="bar"><h2>Chat en direct</h2><label class="switch"><input type="checkbox" id="chatOn"> Chat ouvert</label></div>
+        <ul class="msgs" id="msgs"></ul>
+      </div>
+    </section>
+
+    <section data-p="reports" class="page" hidden>
+      <div class="panel"><h2>Messages signalés</h2><ul class="msgs" id="reports"></ul></div>
+    </section>
+
+    <section data-p="ads" class="page" hidden>
+      <div class="grid2">
+        <div class="panel">
+          <h2 id="adFormTitle">Nouvelle publicité</h2>
+          <form id="adForm" class="form">
+            <label for="aTitle">Titre (affiché sous la pub)</label><input id="aTitle" maxlength="80" placeholder="Ex. Promo boutique Kinshasa">
+            <label for="aType">Type</label><select id="aType"><option value="image">Image</option><option value="video">Vidéo (MP4)</option></select>
+            <label for="aUrl">Adresse du fichier (image ou vidéo)</label><input id="aUrl" placeholder="https://…/pub.jpg ou ads/pub.mp4">
+            <label for="aFile">… ou envoyer un fichier</label><input id="aFile" type="file" accept="image/*,video/mp4,video/webm">
+            <p class="hint" id="aUpHint">L'envoi de fichiers utilise Firebase Storage. Sinon, mets le fichier dans le dossier <code>ads/</code> du dépôt et écris <code>ads/nom-du-fichier</code>.</p>
+            <label for="aLink">Lien quand on clique (optionnel)</label><input id="aLink" placeholder="https://wa.me/243… ou ton site">
+            <fieldset><legend>Emplacements</legend>
+              <label><input type="checkbox" value="interstitial" class="aPl" checked> Entre les niveaux</label>
+              <label><input type="checkbox" value="reward" class="aPl" checked> Pub récompensée (vie, passer un niveau)</label>
+              <label><input type="checkbox" value="banner" class="aPl"> Bannière 320×50 (menu)</label>
+            </fieldset>
+            <div class="row2"><div><label for="aSkip">Durée avant « Passer » (s)</label><input id="aSkip" type="number" min="2" max="30" value="5"></div><div><label for="aWeight">Poids (fréquence)</label><input id="aWeight" type="number" min="1" max="10" value="1"></div></div>
+            <label class="switch"><input type="checkbox" id="aActive" checked> Active</label>
+            <div class="preview" id="aPreview"></div>
+            <div class="row2"><button class="btn primary" type="submit" id="aSave">Enregistrer la pub</button><button class="btn ghost" type="button" id="aCancel" hidden>Annuler</button></div>
+            <p class="err" id="aErr"></p>
+          </form>
+        </div>
+        <div class="panel">
+          <h2>Réglages des pubs</h2>
+          <form id="adCfg" class="form">
+            <label for="cEvery">Pub entre les niveaux : tous les … niveaux réussis</label><input id="cEvery" type="number" min="1" max="20">
+            <label for="cShare">Part de tes pubs quand Google est actif (%)</label><input id="cShare" type="number" min="0" max="100">
+            <label class="switch"><input type="checkbox" id="cReward"> Pubs récompensées actives</label>
+            <label class="switch"><input type="checkbox" id="cGoogle"> Utiliser Google AdSense (H5 Games Ads)</label>
+            <label for="cClient">Identifiant éditeur AdSense</label><input id="cClient" placeholder="ca-pub-1234567890123456">
+            <label for="cSlot">Bloc bannière AdSense (optionnel)</label><input id="cSlot" placeholder="1234567890">
+            <label class="switch"><input type="checkbox" id="cTest"> Mode test Google</label>
+            <button class="btn primary" type="submit">Enregistrer les réglages</button>
+          </form>
+        </div>
+      </div>
+      <div class="panel"><h2>Mes publicités</h2><div class="adlist" id="adList"><p class="muted">Aucune pub pour l'instant.</p></div></div>
+    </section>
+
+    <section data-p="defis" class="page" hidden>
+      <div class="panel"><h2>Défis récents</h2><div class="tablewrap"><table class="tbl"><thead><tr><th>Code</th><th>Créé par</th><th>Joueurs</th><th>Date</th><th></th></tr></thead><tbody id="dBody"></tbody></table></div></div>
+    </section>
+
+    <section data-p="settings" class="page" hidden>
+      <div class="panel narrowish">
+        <h2>Réglages du jeu</h2>
+        <form id="gameCfg" class="form">
+          <label for="sAnn">Annonce affichée dans le menu (vide = rien)</label><input id="sAnn" maxlength="140" placeholder="Ex. Tournoi ce week-end : top 10 récompensé !">
+          <div class="row2"><div><label for="sLives">Vies maximum</label><input id="sLives" type="number" min="1" max="20"></div><div><label for="sRegen">Recharge d'une vie (minutes)</label><input id="sRegen" type="number" min="1" max="240"></div></div>
+          <div class="row2"><div><label for="sSkipB">Prix pour passer un niveau (base)</label><input id="sSkipB" type="number" min="0"></div><div><label for="sSkipN">+ par niveau</label><input id="sSkipN" type="number" min="0"></div></div>
+          <label class="switch"><input type="checkbox" id="sGift"> Cadeau du jour</label>
+          <label class="switch"><input type="checkbox" id="sChat"> Chat ouvert</label>
+          <button class="btn primary" type="submit">Enregistrer</button>
+        </form>
+      </div>
+    </section>
+  </div>
+  <div id="toast" class="toast" role="status" hidden></div>
+</main>
+
+<script src="firebase-config.js"></script>
+<script src="vendor/firebase-app-compat.js"></script>
+<script src="vendor/firebase-auth-compat.js"></script>
+<script src="vendor/firebase-firestore-compat.js"></script>
+<script src="vendor/firebase-storage-compat.js"></script>
+<script>
+// ===== Ellipso shared helpers (used by the game and the community panel) =====
+var CORE = (function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const fmt = (v) => Math.round(v || 0).toLocaleString("fr-FR");
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("ellipso." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("ellipso." + k, JSON.stringify(v)); } catch (e) {} },
+  };
+  let toastT = 0;
+  function toast(msg) { const t = $("toast"); if (!t) return; t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2600); }
+  const today = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+  function isoWeek(d) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const day = d.getUTCDay() || 7; d.setUTCDate(d.getUTCDate() + 4 - day);
+    const y0 = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return d.getUTCFullYear() + "-S" + String(Math.ceil(((d - y0) / 864e5 + 1) / 7)).padStart(2, "0");
+  }
+  const AVATARS = ["#6fe6ff", "#ff4f9a", "#ffd25a", "#8b6bff", "#3fe0c5", "#ff8a3d", "#9dff6a", "#ff6b6b"];
+  const COUNTRIES = [
+    ["CD", "RD Congo"], ["CG", "Congo-Brazzaville"], ["FR", "France"], ["BE", "Belgique"], ["CA", "Canada"], ["CH", "Suisse"],
+    ["CM", "Cameroun"], ["CI", "Côte d'Ivoire"], ["SN", "Sénégal"], ["GA", "Gabon"], ["AO", "Angola"], ["RW", "Rwanda"],
+    ["BI", "Burundi"], ["BJ", "Bénin"], ["BF", "Burkina Faso"], ["ML", "Mali"], ["NE", "Niger"], ["TG", "Togo"], ["GN", "Guinée"],
+    ["TD", "Tchad"], ["CF", "Centrafrique"], ["MG", "Madagascar"], ["MA", "Maroc"], ["DZ", "Algérie"], ["TN", "Tunisie"],
+    ["HT", "Haïti"], ["NG", "Nigeria"], ["GH", "Ghana"], ["KE", "Kenya"], ["TZ", "Tanzanie"], ["UG", "Ouganda"], ["ZA", "Afrique du Sud"],
+    ["ZM", "Zambie"], ["ET", "Éthiopie"], ["EG", "Égypte"], ["US", "États-Unis"], ["GB", "Royaume-Uni"], ["DE", "Allemagne"],
+    ["ES", "Espagne"], ["IT", "Italie"], ["PT", "Portugal"], ["NL", "Pays-Bas"], ["BR", "Brésil"], ["MX", "Mexique"], ["IN", "Inde"],
+    ["CN", "Chine"], ["JP", "Japon"], ["TR", "Turquie"], ["LB", "Liban"], ["AE", "Émirats arabes unis"], ["XX", "Autre pays"],
+  ];
+  const countryName = (c) => (COUNTRIES.find((x) => x[0] === c) || [c, c || "?"])[1];
+  const flag = (c) => (!c || c === "XX" || c.length !== 2 ? "" : String.fromCodePoint(...[...c.toUpperCase()].map((ch) => 0x1f1a5 + ch.charCodeAt(0))));
+  function guessCountry() {
+    const langs = navigator.languages || [navigator.language || ""];
+    for (const l of langs) { const m = /[-_]([A-Za-z]{2})$/.exec(l || ""); if (m && COUNTRIES.some((c) => c[0] === m[1].toUpperCase())) return m[1].toUpperCase(); }
+    return "CD";
+  }
+  function platform() {
+    const ua = navigator.userAgent || "";
+    return /android/i.test(ua) ? "android" : /iphone|ipad|ipod/i.test(ua) ? "ios" : /mobile/i.test(ua) ? "mobile" : "ordinateur";
+  }
+  const installed = () => { try { return matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || navigator.standalone === true; } catch (e) { return false; } };
+  // light profanity filter for the public chat (French / English); the admin can still delete messages
+  const BAD = ["merde", "putain", "pute", "connard", "connasse", "salope", "encule", "enculé", "nique", "batard", "bâtard", "fdp", "ntm", "fuck", "shit", "bitch", "asshole", "pussy", "dick"];
+  function clean(text) {
+    let t = String(text || "").replace(/\s+/g, " ").trim().slice(0, 200);
+    for (const w of BAD) t = t.replace(new RegExp("\\b" + w + "\\b", "gi"), (m) => m[0] + "*".repeat(m.length - 1));
+    return t;
+  }
+  const ago = (ms) => {
+    if (!ms) return "jamais";
+    const s = Math.max(0, (Date.now() - ms) / 1000);
+    if (s < 60) return "à l'instant"; if (s < 3600) return "il y a " + Math.floor(s / 60) + " min";
+    if (s < 86400) return "il y a " + Math.floor(s / 3600) + " h"; return "il y a " + Math.floor(s / 86400) + " j";
+  };
+  return { $, fmt, esc, store, toast, today, isoWeek, AVATARS, COUNTRIES, countryName, flag, guessCountry, platform, installed, clean, ago };
+})();
+
+</script>
+<script>
+(function () {
+  "use strict";
+  const C = CORE, $ = C.$, esc = C.esc, fmt = C.fmt, toast = C.toast;
+  const FB = window.ELLIPSO_FIREBASE || {};
+  if (!FB.apiKey || !window.firebase) { $("setup").hidden = false; return; }
+  // a separate app instance keeps the admin login apart from the anonymous player session of the game
+  const app = firebase.initializeApp(FB, "admin");
+  const auth = app.auth(), db = app.firestore(), FV = firebase.firestore.FieldValue, TS = firebase.firestore.Timestamp;
+  const ONLINE_MS = 150000;
+  const ms = (t) => (t && t.toMillis ? t.toMillis() : t || 0);
+  const isOnline = (u) => !!u.online && Date.now() - ms(u.lastSeen) < ONLINE_MS;
+  const av = (u) => '<span class="av" style="background:' + C.AVATARS[u.avatar || 0] + '">' + esc((u.pseudo || "?").slice(0, 1).toUpperCase()) + "</span>";
+  const unsubs = [];
+
+  auth.onAuthStateChanged(async (u) => {
+    unsubs.splice(0).forEach((f) => f());
+    ["login", "notAdmin", "app"].forEach((id) => ($(id).hidden = true));
+    $("who").hidden = !u;
+    if (!u) { $("login").hidden = false; return; }
+    $("whoMail").textContent = u.email || "";
+    let ok = false;
+    try { ok = (await db.collection("admins").doc(u.uid).get()).exists; } catch (e) { ok = false; }
+    if (!ok) { $("naUid").textContent = u.uid; $("notAdmin").hidden = false; return; }
+    $("app").hidden = false;
+    start();
+  });
+  $("loginForm").onsubmit = async (e) => {
+    e.preventDefault(); $("lErr").textContent = "";
+    try { await auth.signInWithEmailAndPassword($("lMail").value.trim(), $("lPass").value); }
+    catch (err) { $("lErr").textContent = /password|credential|user-not-found/i.test(err.code || err.message) ? "E-mail ou mot de passe incorrect." : "Connexion impossible : " + (err.message || err); }
+  };
+  $("bOut").onclick = () => auth.signOut();
+
+  // ---------- tabs ----------
+  let tab = "dash";
+  document.querySelectorAll("#tabs button").forEach((b) => (b.onclick = () => {
+    tab = b.dataset.t;
+    document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("on", x === b));
+    document.querySelectorAll(".page").forEach((p) => (p.hidden = p.dataset.p !== tab));
+    if (tab === "users") loadUsers(true);
+    if (tab === "defis") loadDefis();
+  }));
+
+  function start() {
+    // live: online players
+    unsubs.push(db.collection("users").where("lastSeen", ">", TS.fromMillis(Date.now() - ONLINE_MS)).onSnapshot((q) => {
+      const on = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter(isOnline).sort((a, b) => (b.level || 0) - (a.level || 0));
+      $("onlineN").textContent = on.length; kpi.online = on.length; renderKpis();
+      $("onlineList").innerHTML = on.length ? on.slice(0, 40).map((u) => "<li>" + av(u) + "<b>" + esc(u.pseudo) + "</b> " + C.flag(u.country) + "<small>niveau " + (u.level || 1) + " · " + esc(u.platform || "") + "</small></li>").join("") : '<li class="muted">Personne pour l\'instant.</li>';
+    }, (e) => console.warn(e)));
+    setInterval(() => { if (tab === "dash") loadDash(); }, 60000);
+    loadDash();
+    unsubs.push(db.collection("config").doc("app").onSnapshot((s) => fillConfig(s.exists ? s.data() : {})));
+    unsubs.push(db.collection("chat").orderBy("at", "desc").limit(100).onSnapshot(renderChat, (e) => console.warn(e)));
+    unsubs.push(db.collection("reports").orderBy("at", "desc").limit(100).onSnapshot(renderReports, (e) => console.warn(e)));
+    unsubs.push(db.collection("ads").onSnapshot(renderAds, (e) => console.warn(e)));
+  }
+
+  // ---------- dashboard ----------
+  const kpi = { online: 0 };
+  function renderKpis() {
+    const t = kpi.today || {}, g = kpi.global || {};
+    const cards = [
+      ["Joueurs en ligne", kpi.online, "en direct", "live"], ["Joueurs inscrits", g.users || 0, "depuis le début"],
+      ["Nouveaux aujourd'hui", t.newUsers || 0, ""], ["Sessions aujourd'hui", t.sessions || 0, ""],
+      ["Niveaux réussis", t.levels || 0, "aujourd'hui"], ["Échecs", t.fails || 0, "aujourd'hui"],
+      ["Pubs maison vues", t.adsOwn || 0, (t.adClicks || 0) + " clics aujourd'hui"], ["Pubs Google", t.adsGoogle || 0, "aujourd'hui"],
+      ["Messages chat", t.messages || 0, "aujourd'hui"], ["Défis créés", t.challenges || 0, "aujourd'hui"],
+    ];
+    $("kpis").innerHTML = cards.map(([l, v, s, k]) => '<div class="kpi ' + (k || "") + '"><span>' + l + "</span><b>" + fmt(v) + "</b><small>" + s + "</small></div>").join("");
+  }
+  async function loadDash() {
+    const days = []; for (let i = 13; i >= 0; i--) { const d = new Date(Date.now() - i * 864e5); days.push(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0")); }
+    try {
+      const snaps = await Promise.all(days.map((d) => db.collection("stats").doc(d).get()));
+      const rows = snaps.map((s, i) => Object.assign({ day: days[i] }, s.exists ? s.data() : {}));
+      kpi.today = rows[rows.length - 1];
+      const g = await db.collection("stats").doc("global").get(); kpi.global = g.exists ? g.data() : {};
+      renderKpis(); renderChart(rows);
+      const us = await db.collection("users").orderBy("lastSeen", "desc").limit(500).get();
+      const all = us.docs.map((d) => d.data());
+      bars("countries", count(all, (u) => C.flag(u.country) + " " + C.countryName(u.country)));
+      bars("devices", count(all, (u) => (u.platform || "?") + (u.installed ? " (installé)" : "")));
+    } catch (e) { console.warn(e); toast("Statistiques indisponibles : vérifie les règles Firestore."); }
+  }
+  function count(list, key) { const m = {}; list.forEach((x) => { const k = key(x); m[k] = (m[k] || 0) + 1; }); return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 8); }
+  function bars(id, entries) {
+    const max = Math.max(1, ...entries.map((e) => e[1]));
+    $(id).innerHTML = entries.length ? entries.map(([k, v]) => "<li><span>" + esc(k) + '</span><span class="track"><i style="width:' + ((v / max) * 100).toFixed(1) + '%"></i></span><b>' + v + "</b></li>").join("") : '<li class="muted">Pas encore de données.</li>';
+  }
+  function renderChart(rows) {
+    const W = 560, H = 190, pad = 22, bw = (W - pad * 2) / rows.length;
+    const max = Math.max(4, ...rows.map((r) => Math.max(r.levels || 0, r.newUsers || 0)));
+    const y = (v) => H - pad - (v / max) * (H - pad * 2);
+    let s = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Activité sur 14 jours">';
+    [0, 0.5, 1].forEach((k) => { const v = Math.round(max * k); s += '<line x1="' + pad + '" x2="' + (W - pad) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="#22325c" stroke-width="1"/><text x="2" y="' + (y(v) + 3) + '">' + v + "</text>"; });
+    rows.forEach((r, i) => {
+      const x = pad + i * bw, w = bw * 0.36;
+      s += '<rect x="' + (x + bw * 0.12) + '" y="' + y(r.levels || 0) + '" width="' + w + '" height="' + (H - pad - y(r.levels || 0)) + '" rx="2" fill="#6fe6ff"><title>' + r.day + " : " + (r.levels || 0) + " niveaux</title></rect>";
+      s += '<rect x="' + (x + bw * 0.52) + '" y="' + y(r.newUsers || 0) + '" width="' + w + '" height="' + (H - pad - y(r.newUsers || 0)) + '" rx="2" fill="#ffd25a"><title>' + r.day + " : " + (r.newUsers || 0) + " nouveaux</title></rect>";
+      if (i % 2 === 0) s += '<text x="' + (x + bw / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + r.day.slice(8) + "/" + r.day.slice(5, 7) + "</text>";
+    });
+    $("chart").innerHTML = s + "</svg>";
+  }
+
+  // ---------- players ----------
+  let users = [], lastDoc = null;
+  async function loadUsers(reset) {
+    if (reset) { users = []; lastDoc = null; }
+    let q = db.collection("users").orderBy("lastSeen", "desc").limit(100);
+    if (lastDoc) q = q.startAfter(lastDoc);
+    try {
+      const s = await q.get();
+      if (s.docs.length) lastDoc = s.docs[s.docs.length - 1];
+      users = users.concat(s.docs.map((d) => Object.assign({ id: d.id }, d.data())));
+      $("uMore").hidden = s.docs.length < 100;
+      renderUsers();
+    } catch (e) { console.warn(e); toast("Impossible de charger les joueurs."); }
+  }
+  function renderUsers() {
+    const term = $("uSearch").value.trim().toLowerCase(), f = $("uFilter").value;
+    const list = users.filter((u) => (!term || (u.pseudo || "").toLowerCase().includes(term)) && (f === "all" || (f === "online" && isOnline(u)) || (f === "banned" && u.banned) || (f === "muted" && u.muted)));
+    $("uBody").innerHTML = list.length ? list.map((u) => '<tr class="' + (u.banned ? "banned" : "") + '"><td><span class="dot ' + (isOnline(u) ? "on" : "") + '" title="' + (isOnline(u) ? "En ligne" : "Hors ligne") + '"></span></td>' +
+      "<td>" + av(u) + " <b>" + esc(u.pseudo) + "</b>" + (u.banned ? '<span class="tag red">suspendu</span>' : "") + (u.muted ? '<span class="tag gold">muet</span>' : "") + "</td>" +
+      "<td>" + C.flag(u.country) + " " + esc(C.countryName(u.country)) + "</td><td>" + (u.level || 1) + "</td><td>" + (u.bestLevel || 1) + "</td><td>" + fmt(u.points) + "</td>" +
+      "<td>" + esc(u.platform || "?") + (u.installed ? " · app" : "") + "</td><td>" + C.ago(ms(u.lastSeen)) + "</td>" +
+      '<td class="acts"><button class="btn" data-a="mute" data-id="' + u.id + '">' + (u.muted ? "Rendre la parole" : "Rendre muet") + '</button><button class="btn danger" data-a="ban" data-id="' + u.id + '">' + (u.banned ? "Réactiver" : "Suspendre") + "</button></td></tr>").join("")
+      : '<tr><td colspan="9" class="muted">Aucun joueur.</td></tr>';
+    $("uBody").querySelectorAll("button").forEach((b) => (b.onclick = async () => {
+      const u = users.find((x) => x.id === b.dataset.id); if (!u) return;
+      const k = b.dataset.a === "ban" ? "banned" : "muted", v = !u[k];
+      try { await db.collection("users").doc(u.id).update({ [k]: v }); u[k] = v; renderUsers(); toast(k === "banned" ? (v ? u.pseudo + " est suspendu" : u.pseudo + " est réactivé") : (v ? u.pseudo + " ne peut plus écrire" : u.pseudo + " peut écrire")); }
+      catch (e) { toast("Action refusée : " + (e.message || e)); }
+    }));
+  }
+  $("uSearch").oninput = renderUsers; $("uFilter").onchange = renderUsers; $("uMore").onclick = () => loadUsers(false);
+  async function setMuted(uid, v) { try { await db.collection("users").doc(uid).update({ muted: v }); toast(v ? "Joueur rendu muet" : "Parole rendue"); } catch (e) { toast("Action refusée"); } }
+
+  // ---------- chat & reports ----------
+  function renderChat(q) {
+    const list = q.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+    $("msgs").innerHTML = list.length ? list.map((m) => "<li>" + av(m) + '<div><div class="meta"><b>' + esc(m.pseudo) + "</b> " + C.flag(m.country) + " · " + C.ago(ms(m.at)) + '</div><div class="txt">' + esc(m.text) + '</div></div><div class="acts"><button class="btn" data-mute="' + esc(m.uid) + '">Muet</button><button class="btn danger" data-del="' + m.id + '">Supprimer</button></div></li>').join("") : '<li class="muted">Aucun message.</li>';
+    $("msgs").querySelectorAll("[data-del]").forEach((b) => (b.onclick = () => db.collection("chat").doc(b.dataset.del).delete().then(() => toast("Message supprimé")).catch(() => toast("Suppression refusée"))));
+    $("msgs").querySelectorAll("[data-mute]").forEach((b) => (b.onclick = () => setMuted(b.dataset.mute, true)));
+  }
+  function renderReports(q) {
+    const list = q.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+    $("repCount").hidden = !list.length; $("repCount").textContent = list.length;
+    $("reports").innerHTML = list.length ? list.map((r) => '<li><span class="av" style="background:#ff4766">!</span><div><div class="meta"><b>' + esc(r.reportedPseudo || "?") + "</b> · signalé " + C.ago(ms(r.at)) + '</div><div class="txt">' + esc(r.text) + '</div></div><div class="acts"><button class="btn danger" data-del="' + r.id + '" data-msg="' + esc(r.msgId) + '">Supprimer le message</button><button class="btn" data-mute="' + esc(r.reportedUid) + '">Muet</button><button class="btn ghost" data-ok="' + r.id + '">Ignorer</button></div></li>').join("") : '<li class="muted">Aucun signalement.</li>';
+    $("reports").querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => { await db.collection("chat").doc(b.dataset.msg).delete().catch(() => {}); await db.collection("reports").doc(b.dataset.del).delete().catch(() => {}); toast("Message supprimé"); }));
+    $("reports").querySelectorAll("[data-ok]").forEach((b) => (b.onclick = () => db.collection("reports").doc(b.dataset.ok).delete()));
+    $("reports").querySelectorAll("[data-mute]").forEach((b) => (b.onclick = () => setMuted(b.dataset.mute, true)));
+  }
+  $("chatOn").onchange = () => saveCfg({ chatEnabled: $("chatOn").checked });
+
+  // ---------- config ----------
+  let cfg = {};
+  function fillConfig(c) {
+    cfg = Object.assign({}, NET_DEFAULTS, c);
+    $("chatOn").checked = cfg.chatEnabled !== false; $("sChat").checked = cfg.chatEnabled !== false;
+    $("sAnn").value = cfg.announcement || ""; $("sLives").value = cfg.livesMax; $("sRegen").value = cfg.lifeRegenMin;
+    $("sSkipB").value = cfg.skipCostBase; $("sSkipN").value = cfg.skipCostPerLevel; $("sGift").checked = cfg.dailyGift !== false;
+    $("cEvery").value = cfg.interstitialEvery; $("cShare").value = Math.round((cfg.ownAdsShare == null ? 0.6 : cfg.ownAdsShare) * 100);
+    $("cReward").checked = cfg.rewardedEnabled !== false; $("cGoogle").checked = cfg.useGoogle !== false;
+    $("cClient").value = cfg.adClient || ""; $("cSlot").value = cfg.bannerSlot || ""; $("cTest").checked = cfg.adTest !== false;
+  }
+  const NET_DEFAULTS = { livesMax: 5, lifeRegenMin: 15, skipCostBase: 150, skipCostPerLevel: 15, dailyGift: true, interstitialEvery: 4, ownAdsShare: 0.6, rewardedEnabled: true, useGoogle: true, adClient: "", bannerSlot: "", adTest: true, chatEnabled: true, announcement: "" };
+  async function saveCfg(p) { try { await db.collection("config").doc("app").set(p, { merge: true }); toast("Réglages enregistrés : les joueurs les reçoivent tout de suite."); } catch (e) { toast("Enregistrement refusé : " + (e.message || e)); } }
+  const num = (id, lo, hi, d) => { const v = parseFloat($(id).value); return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
+  $("gameCfg").onsubmit = (e) => { e.preventDefault(); saveCfg({ announcement: $("sAnn").value.trim().slice(0, 140), livesMax: Math.round(num("sLives", 1, 20, 5)), lifeRegenMin: num("sRegen", 1, 240, 15), skipCostBase: Math.round(num("sSkipB", 0, 1e6, 150)), skipCostPerLevel: Math.round(num("sSkipN", 0, 1e5, 15)), dailyGift: $("sGift").checked, chatEnabled: $("sChat").checked }); };
+  $("adCfg").onsubmit = (e) => {
+    e.preventDefault();
+    const client = $("cClient").value.trim();
+    if (client && !/^ca-pub-\d{10,20}$/.test(client)) { toast("L'identifiant AdSense doit ressembler à ca-pub-1234567890123456"); return; }
+    saveCfg({ interstitialEvery: Math.round(num("cEvery", 1, 20, 4)), ownAdsShare: num("cShare", 0, 100, 60) / 100, rewardedEnabled: $("cReward").checked, useGoogle: $("cGoogle").checked, adClient: client, bannerSlot: $("cSlot").value.trim(), adTest: $("cTest").checked });
+  };
+
+  // ---------- ads ----------
+  let ads = [], editing = null;
+  function renderAds(q) {
+    ads = q.docs.map((d) => Object.assign({ id: d.id }, d.data())).sort((a, b) => ms(b.createdAt) - ms(a.createdAt));
+    $("adList").innerHTML = ads.length ? ads.map((a) => {
+      const imp = a.impressions || 0, clk = a.clicks || 0, ctr = imp ? ((clk / imp) * 100).toFixed(1) : "0";
+      const media = a.type === "video" ? '<video src="' + esc(a.url) + '" muted playsinline preload="metadata"></video>' : '<img src="' + esc(a.url) + '" alt="">';
+      return '<div class="adcard ' + (a.active === false ? "off" : "") + '"><div class="media">' + media + '</div><div class="info"><b>' + esc(a.title || "Sans titre") + "</b><small class=\"muted\">" + esc((a.placements || []).map((p) => ({ interstitial: "entre niveaux", reward: "récompensée", banner: "bannière" })[p]).join(" · ")) + "</small>" +
+        '<div class="stats"><span><b>' + fmt(imp) + "</b> vues</span><span><b>" + fmt(clk) + "</b> clics</span><span><b>" + ctr + ' %</b> taux</span></div><div class="acts"><button class="btn" data-ed="' + a.id + '">Modifier</button><button class="btn" data-tg="' + a.id + '">' + (a.active === false ? "Activer" : "Mettre en pause") + '</button><button class="btn danger" data-rm="' + a.id + '">Supprimer</button></div></div></div>';
+    }).join("") : '<p class="muted">Aucune pub pour l\'instant. Ajoute ta première pub avec le formulaire.</p>';
+    $("adList").querySelectorAll("[data-tg]").forEach((b) => (b.onclick = () => { const a = ads.find((x) => x.id === b.dataset.tg); db.collection("ads").doc(a.id).update({ active: a.active === false }); }));
+    $("adList").querySelectorAll("[data-rm]").forEach((b) => (b.onclick = () => { if (b.dataset.sure) db.collection("ads").doc(b.dataset.rm).delete().then(() => toast("Pub supprimée")); else { b.dataset.sure = "1"; b.textContent = "Confirmer"; } }));
+    $("adList").querySelectorAll("[data-ed]").forEach((b) => (b.onclick = () => editAd(ads.find((x) => x.id === b.dataset.ed))));
+  }
+  function editAd(a) {
+    editing = a || null;
+    $("adFormTitle").textContent = a ? "Modifier la publicité" : "Nouvelle publicité"; $("aCancel").hidden = !a;
+    $("aTitle").value = a ? a.title || "" : ""; $("aType").value = a ? a.type || "image" : "image"; $("aUrl").value = a ? a.url || "" : ""; $("aLink").value = a ? a.link || "" : "";
+    $("aSkip").value = a ? a.skipAfter || 5 : 5; $("aWeight").value = a ? a.weight || 1 : 1; $("aActive").checked = a ? a.active !== false : true; $("aFile").value = "";
+    document.querySelectorAll(".aPl").forEach((c) => (c.checked = a ? (a.placements || []).includes(c.value) : c.value !== "banner"));
+    preview(); window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  $("aCancel").onclick = () => editAd(null);
+  function preview() {
+    const url = $("aUrl").value.trim(), f = $("aFile").files[0], src = f ? URL.createObjectURL(f) : url;
+    const vid = f ? /^video/.test(f.type) : $("aType").value === "video";
+    $("aPreview").innerHTML = src ? (vid ? '<video controls playsinline></video>' : '<img alt="Aperçu">') : "";
+    const el = $("aPreview").firstChild; if (el) el.src = src;
+  }
+  ["aUrl", "aType"].forEach((id) => ($(id).oninput = preview));
+  $("aFile").onchange = () => { const f = $("aFile").files[0]; if (f) $("aType").value = /^video/.test(f.type) ? "video" : "image"; preview(); };
+  async function upload(file) {
+    if (!firebase.storage) throw new Error("Firebase Storage n'est pas chargé.");
+    const ref = app.storage().ref("ads/" + Date.now() + "_" + file.name.replace(/[^\w.-]+/g, "_"));
+    const snap = await ref.put(file, { contentType: file.type });
+    return snap.ref.getDownloadURL();
+  }
+  $("adForm").onsubmit = async (e) => {
+    e.preventDefault(); $("aErr").textContent = "";
+    const btn = $("aSave"); btn.disabled = true; btn.textContent = "Enregistrement…";
+    try {
+      let url = $("aUrl").value.trim(); const f = $("aFile").files[0];
+      if (f) { if (f.size > 20 * 1024 * 1024) throw new Error("Fichier trop lourd (20 Mo maximum)."); url = await upload(f); }
+      if (!url) throw new Error("Ajoute une adresse de fichier ou envoie un fichier.");
+      const placements = [...document.querySelectorAll(".aPl")].filter((c) => c.checked).map((c) => c.value);
+      if (!placements.length) throw new Error("Choisis au moins un emplacement.");
+      const link = $("aLink").value.trim();
+      if (link && !/^https?:\/\//.test(link)) throw new Error("Le lien doit commencer par https://");
+      const data = { title: $("aTitle").value.trim().slice(0, 80), type: $("aType").value, url, link, placements, skipAfter: Math.round(num("aSkip", 2, 30, 5)), weight: Math.round(num("aWeight", 1, 10, 1)), active: $("aActive").checked };
+      if (editing) await db.collection("ads").doc(editing.id).update(data);
+      else await db.collection("ads").add(Object.assign(data, { impressions: 0, clicks: 0, createdAt: FV.serverTimestamp() }));
+      toast(editing ? "Pub modifiée" : "Pub ajoutée : elle apparaît déjà dans le jeu"); editAd(null);
+    } catch (err) {
+      $("aErr").textContent = /storage|bucket|unauthorized|billing/i.test(String(err.message || err)) ? "Envoi impossible (Firebase Storage n'est pas activé). Mets le fichier dans le dossier ads/ du dépôt et écris son adresse." : err.message || String(err);
+    } finally { btn.disabled = false; btn.textContent = "Enregistrer la pub"; }
+  };
+
+  // ---------- challenges ----------
+  async function loadDefis() {
+    try {
+      const q = await db.collection("challenges").orderBy("createdAt", "desc").limit(60).get();
+      const list = q.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+      $("dBody").innerHTML = list.length ? list.map((d) => "<tr><td><b>" + esc(d.id.slice(0, 6).toUpperCase()) + "</b></td><td>" + esc(d.byPseudo || "?") + " " + C.flag(d.byCountry) + "</td><td>" + (d.plays || 0) + "</td><td>" + C.ago(ms(d.createdAt)) + '</td><td><button class="btn danger" data-rm="' + d.id + '">Supprimer</button></td></tr>').join("") : '<tr><td colspan="5" class="muted">Aucun défi.</td></tr>';
+      $("dBody").querySelectorAll("[data-rm]").forEach((b) => (b.onclick = () => db.collection("challenges").doc(b.dataset.rm).delete().then(loadDefis)));
+    } catch (e) { console.warn(e); }
+  }
+})();
+
+</script>
+</body>
+</html>

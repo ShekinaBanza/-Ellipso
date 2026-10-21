@@ -2,8 +2,8 @@
 
 <div id="hud" hidden>
   <div class="hud-top">
-    <div class="lvl"><span class="lbl">NIVEAU</span><b id="hLvl">1</b></div>
-    <div class="score"><b id="hScore">0</b><span class="lbl-pts">POINTS</span><span id="hCombo" class="combo" hidden></span></div>
+    <div class="lvl"><span class="lbl" id="hLvlLbl">NIVEAU</span><b id="hLvl">1</b></div>
+    <div class="score"><b id="hScore">0</b><span class="lbl-pts">POINTS</span><div id="hLives" class="lives" aria-label="Vies"></div><span id="hCombo" class="combo" hidden></span></div>
     <div class="right">
       <div id="hNeed" class="need" aria-label="Balles dans la cible"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg><b id="hNeedTxt">0/2</b></div>
       <button id="bPause" class="icon" aria-label="Pause"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg></button>
@@ -14,6 +14,7 @@
     <div class="actions">
       <button id="bHint" class="pill gold" hidden>Voir les foyers · pub</button>
       <button id="bSalvo" class="cta" hidden>LANCER LA SALVE</button>
+      <button id="bExitDemo" class="pill" hidden>Quitter la démo</button>
     </div>
     <div class="aimrow" id="aimRow" hidden>
       <button id="bLeft" class="icon fine" aria-label="Tourner à gauche"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
@@ -29,14 +30,21 @@
     {{LOGO}}
     <h1 class="word">ELLIPSO</h1>
     <p class="tag">Traverse un point ×2, dédouble ta balle, et vise la cible grâce aux foyers.</p>
+    <p class="announce" id="mAnnounce" hidden></p>
     <div class="best" id="mBest"></div>
+    <div class="mlives" id="mLives"></div>
     <button id="bPlay" class="cta big">JOUER<small id="bPlaySub">Niveau 1</small></button>
-    <button id="bRestart1" class="link" hidden>Recommencer au niveau 1</button>
+    <button id="bDemo" class="pill gold">Voir la démo : 1 balle devient 72</button>
+    <div class="row">
+      <button id="bComm" class="pill gold">Communauté</button>
+      <button id="bDefi" class="pill">Défier un ami</button>
+    </div>
     <div class="row">
       <button id="bSound" class="pill">Son : oui</button>
       <button id="bHow" class="pill">Comment jouer</button>
-      <button id="bInstall" class="pill gold" hidden>Installer le jeu</button>
+      <button id="bInstall" class="pill" hidden>Installer le jeu</button>
     </div>
+    <button id="bRestart1" class="link">Nouvelle partie</button>
   </div>
   <div class="banner" data-banner></div>
 </section>
@@ -47,10 +55,11 @@
     <h2>Les règles</h2>
     <ol class="rules">
       <li><span>Glisse pour viser, relâche pour tirer.<small>Les flèches règlent l'angle au dixième de degré. La ligne devient verte quand le tir est correct.</small></span></li>
-      <li><span>Ta balle doit d'abord traverser un point ×2 : elle se divise en deux.<small>Si elle touche la clôture avant, elle tombe et le niveau recommence.</small></span></li>
+      <li><span>Ta balle doit d'abord traverser un point ×2 : elle se divise en deux.<small>Si elle touche la clôture avant, elle tombe et tu perds une vie.</small></span></li>
+      <li><span>Enchaîne les multiplicateurs : ×2, puis ×3, puis ×4…<small>La ligne verte prévoit toute la chaîne, et la visée aimantée t'aide à ne rien rater. Plus de balles dans la cible, plus d'étoiles.</small></span></li>
       <li><span>Chaque balle touche la clôture 3 fois au maximum.<small>Certains niveaux en autorisent moins.</small></span></li>
       <li><span>Ce qui part d'un foyer arrive à l'autre.<small>Un point ×2 posé sur un foyer envoie ses deux balles vers la cible.</small></span></li>
-      <li><span>Mets assez de balles dans la cible pour passer.<small>Raté ? Le niveau recommence. Tu peux le passer avec une pub ou avec tes points.</small></span></li>
+      <li><span>Tu as 5 vies, elles se rechargent toutes seules.<small>Plus de vies ? Attends, regarde une pub, ou utilise tes points.</small></span></li>
     </ol>
     <button id="bHowOk" class="cta">COMPRIS</button>
   </div>
@@ -64,7 +73,7 @@
     <div class="stack">
       <button id="bResume" class="cta">REPRENDRE</button>
       <button id="bPauseSound" class="secondary">Son : oui</button>
-      <button id="bShare" class="secondary">Partager ma progression</button>
+      <button id="bPauseComm" class="secondary">Communauté</button>
       <button id="bQuit" class="secondary">Quitter vers le menu</button>
     </div>
   </div>
@@ -85,23 +94,86 @@
       <div class="eyebrow" id="fEyebrow">NIVEAU 1 · ESSAI 1</div>
       <h2 id="fTitle">Raté !</h2>
       <p id="fText"></p>
+      <div class="lives big" id="fLives"></div>
+      <p class="timer" id="fTimer" hidden></p>
       <div class="stack">
         <button id="bRetry" class="cta">RÉESSAYER</button>
+        <button id="bLifeAd" class="secondary" hidden>+1 vie · regarder une pub</button>
+        <button id="bLifePts" class="secondary" hidden>Remplir les vies · 300 points</button>
         <button id="bSkipAd" class="secondary">Passer le niveau · regarder une pub</button>
         <button id="bSkipPts" class="secondary">Passer le niveau · 200 points</button>
+        <button id="bFailMenu" class="link">Menu</button>
       </div>
     </div>
     <div class="banner" data-banner></div>
   </div>
 </section>
 
+<section id="dover" class="screen modal" hidden>
+  <div class="stack">
+    <div class="card">
+      <div class="eyebrow">DÉFI TERMINÉ</div>
+      <h2 id="dTitle">Niveau 1</h2>
+      <p id="dText"></p>
+      <div id="dRes"></div>
+      <div class="stack">
+        <button id="bDefiShare" class="cta">DÉFIER D'AUTRES AMIS</button>
+        <button id="bDefiAgain" class="secondary">Rejouer ce défi</button>
+        <button id="bDefiMenu" class="secondary">Retour au menu</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="defiCard" class="screen modal" hidden>
+  <div class="card">
+    <div class="eyebrow">DÉFI</div>
+    <h2 id="dcTitle">Un ami te défie !</h2>
+    <p id="dcText">Mêmes niveaux pour tout le monde, 3 vies, pas de recharge. Va le plus loin possible.</p>
+    <div id="dcRes"></div>
+    <div class="stack">
+      <button id="bDefiGo" class="cta">RELEVER LE DÉFI</button>
+      <button id="bDefiLater" class="secondary">Plus tard</button>
+    </div>
+  </div>
+</section>
+
+<section id="gift" class="screen modal" hidden>
+  <div class="card">
+    <div class="eyebrow">CADEAU DU JOUR</div>
+    <h2 id="gTitle">Jour 1</h2>
+    <div class="giftdays" id="gDays"></div>
+    <p id="gText"></p>
+    <button id="bGift" class="cta">RÉCUPÉRER</button>
+  </div>
+</section>
+
+<section id="comm" class="screen modal" hidden>
+  <div class="card wide">
+    <div class="commhead">
+      <h2>Communauté</h2>
+      <button id="bCommClose" class="icon" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button data-t="rank">Classement</button><button data-t="defi">Défis</button><button data-t="chat">Chat</button><button data-t="prof">Profil</button>
+    </div>
+    <div id="commBody" class="commbody"></div>
+  </div>
+</section>
+
 <section id="ad" class="screen modal" hidden>
   <div class="card">
     <div class="ad-label">PUBLICITÉ</div>
-    <div class="ad-box" id="adBox">Démo : une vraie publicité s'affichera ici quand ton compte AdSense sera configuré.</div>
+    <div class="ad-box" id="adBox"></div>
+    <p class="ad-title" id="adTitle"></p>
+    <a id="bAdLink" class="secondary adlink" target="_blank" rel="noopener" hidden>En savoir plus</a>
     <div class="bar"><i id="adBar"></i></div>
-    <button id="bAdClose" class="cta" disabled>Patiente… <span id="adSec">3</span></button>
+    <button id="bAdClose" class="cta" disabled>Patiente…</button>
   </div>
+</section>
+
+<section id="loading" class="screen modal" hidden>
+  <div class="loader"><span></span><p>Préparation du niveau…</p></div>
 </section>
 
 <div id="toast" class="toast" role="status" hidden></div>

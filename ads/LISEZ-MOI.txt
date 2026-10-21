@@ -1,0 +1,2 @@
+Dossier pour tes pubs (images JPG/PNG, vidéos MP4).
+Dans l'admin, adresse du fichier : ads/nom-du-fichier.jpg
